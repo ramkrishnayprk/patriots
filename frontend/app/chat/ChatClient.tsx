@@ -104,7 +104,7 @@ export default function ChatClient() {
   }, [conversations, activeId, selectedModelId, loaded, user]);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: isStreaming ? "auto" : "smooth" });
   }, [conversations, activeId, streamingText]);
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
@@ -288,6 +288,7 @@ export default function ChatClient() {
                   createdAt: new Date().toISOString(),
                   sources: streamingSources ?? undefined,
                 }}
+                isStreaming
               />
             )}
           </Stack>

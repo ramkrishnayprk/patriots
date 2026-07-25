@@ -48,10 +48,11 @@ function seedConversations(): Conversation[] {
           id: "msg-1b",
           role: "assistant",
           content:
-            "Oppenheimer (2023) was directed by Christopher Nolan. It stars Cillian Murphy as J. Robert Oppenheimer, alongside Emily Blunt, Matt Damon, and Robert Downey Jr. The film runs 180 minutes and was shot largely on IMAX 65mm film.",
+            "## 🎬 Oppenheimer (2023)\n\nDirected and written by **Christopher Nolan**.[1]\n\n**🎭 Principal cast**\n\n- **Cillian Murphy** — J. Robert Oppenheimer\n- **Emily Blunt** — Kitty Oppenheimer\n- **Robert Downey Jr.** — Lewis Strauss\n- **Matt Damon** — Gen. Leslie Groves\n\n⏱️ Runs **180 minutes**, shot largely on IMAX 65mm film.[2]",
           createdAt: hoursAgo(2),
           sources: [
             { chunkId: "tmdb-872585-crew", title: "Oppenheimer (2023) — Cast & Crew", url: "https://www.themoviedb.org/movie/872585-oppenheimer" },
+            { chunkId: "tmdb-872585-specs", title: "Oppenheimer (2023) — Technical Specs", url: "https://www.imdb.com/title/tt15398776/technical/" },
           ],
         },
       ],
@@ -73,7 +74,7 @@ function seedConversations(): Conversation[] {
           id: "msg-2b",
           role: "assistant",
           content:
-            "\"Felina\" (S5E16), Breaking Bad's series finale, holds a 9.9/10 rating on IMDb — one of the highest-rated finales of any TV series. The show overall averages 9.5/10 across all five seasons.",
+            "⭐ **\"Felina\"** (S5E16) — *Breaking Bad*'s series finale — holds a **9.9/10** on IMDb, among the highest-rated finales of any series. The show averages **9.5/10** across all five seasons.[1]",
           createdAt: hoursAgo(25),
           sources: [
             { chunkId: "imdb-tt2301451-rating", title: "Breaking Bad — Felina (S5E16)", url: "https://www.imdb.com/title/tt2301451/" },
@@ -98,10 +99,11 @@ function seedConversations(): Conversation[] {
           id: "msg-3b",
           role: "assistant",
           content:
-            "Dune: Part Two (2024) grossed roughly $714 million worldwide against a production budget of about $190 million, making it one of the most profitable releases of 2024.",
+            "💰 *Dune: Part Two* (2024) grossed about **$714 million** worldwide against a production budget of roughly **$190 million**.[1]\n\n- 🇺🇸 **Domestic** — $282 million\n- 🌍 **International** — $432 million\n- 📅 **Released** — March 1, 2024\n\nOne of 2024's most profitable studio releases — Warner Bros. greenlit *Dune: Messiah* shortly after.[2]",
           createdAt: hoursAgo(70),
           sources: [
             { chunkId: "tmdb-693134-financials", title: "Dune: Part Two (2024) — Financials", url: "https://www.themoviedb.org/movie/693134-dune-part-two" },
+            { chunkId: "bom-tt15239678", title: "Dune: Part Two — Box Office Mojo", url: "https://www.boxofficemojo.com/title/tt15239678/" },
           ],
         },
       ],
@@ -123,7 +125,7 @@ function seedConversations(): Conversation[] {
           id: "msg-4b",
           role: "assistant",
           content:
-            "Barbie (2023) released in theaters on July 21, 2023. It's a comedy-fantasy directed by Greta Gerwig, starring Margot Robbie and Ryan Gosling.",
+            "📅 ***Barbie*** hit theaters on **July 21, 2023** — a comedy-fantasy directed by **Greta Gerwig**, starring Margot Robbie and Ryan Gosling.[1]",
           createdAt: hoursAgo(150),
           sources: [
             { chunkId: "tmdb-346698-overview", title: "Barbie (2023) — Overview", url: "https://www.themoviedb.org/movie/346698-barbie" },

@@ -10,7 +10,7 @@ import type { Conversation } from "./dummy/conversations";
 // accounts (see lib/auth.ts), and each must see only its own chat history.
 
 function storageKey(userId: string): string {
-  return `cinebot:chat-state:v1:${userId}`;
+  return `cinebot:chat-state:v2:${userId}`;
 }
 
 export interface StoredChatState {
