@@ -1,0 +1,111 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{url}
+
+\title{Movie RAG: Exploratory Evaluation Metrics}
+\author{Combined Movies Run}
+\date{July 25, 2026}
+
+\begin{document}
+\maketitle
+
+\section{Evaluation status}
+
+This is a reproducible exploratory evaluation of the
+\texttt{combined-movies} run. The golden CSV is structurally valid, but all
+40 rows still have \texttt{human\_verified=false}. Consequently, these numbers
+must not be submitted as the official test score. A human must verify every
+answer, source, and evidence quote, then the frozen test split must be run once.
+
+\section{Golden-set validation}
+
+\begin{center}
+\begin{tabular}{lrrr}
+\hline
+Category & Required & Actual & Dev/Test \\
+\hline
+Single-hop factual & 15 & 15 & 9/6 \\
+Multi-hop & 6 & 6 & 4/2 \\
+Comparative & 4 & 4 & 2/2 \\
+Temporal & 4 & 4 & 2/2 \\
+Unanswerable & 8 & 8 & 5/3 \\
+Ambiguous/adversarial & 3 & 3 & 2/1 \\
+\hline
+Total & 40 & 40 & 24/16 \\
+\hline
+\end{tabular}
+\end{center}
+
+All answerable evidence quotes were found in their source document and contain
+at most 25 words. The supplied two-column seed CSV contained 23 items:
+14 matched the current corpus, four conflicted with it, and five asserted facts
+not present in the corpus. The detailed audit is
+\texttt{seed\_csv\_validation.csv}.
+
+\section{Metrics and possible values}
+
+\begin{longtable}{p{0.25\textwidth}p{0.18\textwidth}p{0.48\textwidth}}
+\hline
+Metric & Range & Interpretation \\
+\hline
+Recall@5, Recall@20 & $[0,1]$ & Fraction of required gold documents found by rank 5 or 20. \\
+MRR & $[0,1]$ & Reciprocal rank of the first relevant document, averaged over answerable items. \\
+nDCG@10 & $[0,1]$ & Position-sensitive gain for binary document relevance at rank 10. \\
+Answer correctness proxy & $[0,1]$ & Fraction of answerable items with every required gold document in the top five. \\
+Citation validity proxy & $[0,1]$ & Fraction of answerable items with at least one gold document in the top five. \\
+Correct-refusal rate & $[0,1]$ & Fraction of non-answerable items rejected by the retrieval evidence gate. \\
+Over-refusal rate & $[0,1]$ & Fraction of answerable items rejected by that gate. \\
+Latency p50/p95 & $[0,\infty)$ ms & Median and 95th-percentile local query latency. \\
+Cost per query & $[0,\infty)$ USD & Paid API cost; zero here because all evaluation inference was local. \\
+\hline
+\end{longtable}
+
+\section{Observed results}
+
+\small
+\begin{center}
+\begin{tabular}{lrrrrrrrr}
+\hline
+Config & R@5 & R@20 & MRR & nDCG@10 & Ans. & Refuse & Over & p95 ms \\
+\hline
+B0 control & 0.000 & 0.000 & 0.000 & 0.000 & 0.000 & 1.000 & 1.000 & 0.0 \\
+B1 BM25 & 1.000 & 1.000 & 0.977 & 0.983 & 1.000 & 0.000 & 0.000 & 19.1 \\
+B2 dense naive & 0.966 & 0.966 & 0.966 & 0.966 & 0.966 & 0.000 & 0.000 & 36.3 \\
+B3 final & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 0.091 & 0.000 & 1532.1 \\
+\hline
+\end{tabular}
+\end{center}
+\normalsize
+
+All configurations processed 40 questions. B3 citation-validity proxy was
+1.000 and p50 latency was 1328.4 ms. Cost was \$0.00 per query. The B0 row is
+an offline always-refuse control, not a language-model closed-book experiment;
+therefore the required closed-book knowledge baseline remains outstanding.
+All 29 answerable items are in the B0-incorrect subset, on which B3's answer
+support proxy is 1.000.
+
+\section{Uncertainty and errors}
+
+The B3-minus-B2 answer-support improvement is 0.0345. A paired 5,000-sample
+bootstrap gives a 95\% confidence interval of $[0.0000, 0.1034]$. Since the
+interval includes zero, this run does not establish an improvement.
+
+Fifteen failures were deterministically labeled in the failure-analysis CSV.
+The dominant issue is hallucination risk caused by missing refusal: answer retrieval succeeds, but the
+evidence gate usually returns superficially related passages for questions
+whose requested fact is absent. The next change should add field-level
+support checks before generation, then rerun only the dev split.
+
+\section{Reproduction and limitations}
+
+The source CSV, validation output, per-item predictions, metrics, and errors
+are stored in the evaluation directory. Commands are documented in that
+directory's README. Answer correctness and citation validity are retrieval
+support proxies; no generation-stage answers or citations were graded.
+The official test split has not been run under the rubric's once-only rule
+because human verification is incomplete.
+
+\end{document}

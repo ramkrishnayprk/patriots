@@ -8,4 +8,14 @@ __pycache__/
 htmlcov/
 frontend/node_modules/
 frontend/.next/
-backend/data/
+backend/data/*
+!backend/data/pdf/
+backend/data/pdf/*
+!backend/data/pdf/Dockerfile
+!backend/data/pdf/compile.sh
+!backend/data/pdf/catalog.json
+!backend/data/pdf/latex/
+!backend/data/pdf/latex/*.tex
+!backend/data/pdf/pdfs/
+!backend/data/pdf/pdfs/*.pdf
+imdb-scraper/data/
