@@ -8,9 +8,9 @@ def redis_connection() -> Redis:
     return Redis.from_url(Settings.from_env().redis_url)
 
 
-def scrape_queue() -> Queue:
+def acquisition_queue() -> Queue:
     return Queue(
-        "scraping",
+        "acquisition",
         connection=redis_connection(),
-        default_timeout="6h",
+        default_timeout="24h",
     )

@@ -1,5 +1,6 @@
 import hashlib
 import math
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +61,7 @@ class _ApproximateTokenizer:
         return list(range(math.ceil(len(text) / 4)))
 
 
+@lru_cache(maxsize=4)
 def load_local_model(model_path: Path, *, model_name: str, device: str) -> LocalFastEmbedModel:
     if device not in {"auto", "cpu"}:
         raise ValueError("This image supports CPU embeddings; set device to auto or cpu.")
@@ -71,3 +73,29 @@ def load_local_model(model_path: Path, *, model_name: str, device: str) -> Local
     model = LocalFastEmbedModel(model_name, model_path, local_only=True)
     model.eval()
     return model
+
+
+class LocalFastEmbedReranker:
+    def __init__(self, model_name: str, cache_dir: Path, *, local_only: bool):
+        from fastembed.rerank.cross_encoder import TextCrossEncoder
+
+        self._model = TextCrossEncoder(
+            model_name=model_name,
+            cache_dir=str(cache_dir),
+            local_files_only=local_only,
+        )
+
+    def rerank(self, query: str, documents: list[str], *, batch_size: int = 64) -> list[float]:
+        return [float(score) for score in self._model.rerank(query, documents, batch_size)]
+
+
+@lru_cache(maxsize=4)
+def load_local_reranker(
+    model_path: Path, *, model_name: str
+) -> LocalFastEmbedReranker:
+    if not is_model_installed(model_path, model_name):
+        raise FileNotFoundError(
+            f"Reranker model {model_name} is not installed in {model_path}. "
+            "Run the embedding-model-download Docker service first."
+        )
+    return LocalFastEmbedReranker(model_name, model_path, local_only=True)

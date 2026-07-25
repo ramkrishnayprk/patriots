@@ -37,11 +37,13 @@ def _chunk(chunk_id: str, text: str, *, generation: int) -> dict:
         "id": chunk_id,
         "document_id": chunk_id.split("::")[0],
         "chunk_number": 0,
-        "title": "Artificial Intelligence",
+        "title": "The Future Film",
         "section": "Overview",
-        "category": "Information Technology",
-        "url": "https://example.edu/ai",
-        "quick_facts": {"credit_hours": "30", "formats": ["Online"]},
+        "year": 2026,
+        "genres": ["Science Fiction", "Drama"],
+        "imdb_rating": 7.4,
+        "url": "https://www.imdb.com/title/tt0000001/",
+        "quick_facts": {"year": 2026, "genres": ["Science Fiction"]},
         "text": text,
         "strategy": "section_aware",
         "content_hash": hashlib.sha256(text.encode()).hexdigest(),
@@ -62,8 +64,8 @@ def test_embedding_pipeline_is_idempotent_and_sweeps(tmp_path):
     run_dir = tmp_path / "runs" / "embedding-run"
     chunks_path = run_dir / "chunks.jsonl"
     first_chunks = [
-        _chunk("doc-1::section_aware::0", "AI program credit hours.", generation=2),
-        _chunk("doc-2::section_aware::0", "Data science curriculum.", generation=2),
+        _chunk("tt1::section_aware::0", "A signal arrives from tomorrow.", generation=2),
+        _chunk("tt2::section_aware::0", "A family searches an abandoned city.", generation=2),
     ]
     _write_chunks(chunks_path, first_chunks)
     options = EmbeddingOptions(
@@ -94,8 +96,8 @@ def test_embedding_pipeline_is_idempotent_and_sweeps(tmp_path):
     assert second["vector_count"] == 2
 
     replacement_chunks = [
-        _chunk("doc-2::section_aware::0", "Data science curriculum.", generation=3),
-        _chunk("doc-3::section_aware::0", "Cybersecurity curriculum.", generation=3),
+        _chunk("tt2::section_aware::0", "A family searches an abandoned city.", generation=3),
+        _chunk("tt3::section_aware::0", "A detective investigates a vanished ship.", generation=3),
     ]
     _write_chunks(chunks_path, replacement_chunks)
     third = ingest_run(

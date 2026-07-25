@@ -282,15 +282,20 @@ def _prepare_record(chunk: Any, options: EmbeddingOptions) -> dict[str, Any] | s
 
     metadata: dict[str, str | int | float | bool] = {
         "document_id": str(chunk.get("document_id") or ""),
+        "imdb_id": str(chunk.get("document_id") or ""),
         "title": str(chunk.get("title") or ""),
         "section": str(chunk.get("section") or ""),
-        "category": str(chunk.get("category") or ""),
+        "genres": ", ".join(str(value) for value in (chunk.get("genres") or [])),
         "url": str(chunk.get("url") or ""),
         "strategy": str(chunk.get("strategy") or ""),
         "generation": generation,
         "chunk_number": chunk_number,
         "content_hash": content_hash,
     }
+    if chunk.get("year") is not None:
+        metadata["year"] = int(chunk["year"])
+    if chunk.get("imdb_rating") is not None:
+        metadata["imdb_rating"] = float(chunk["imdb_rating"])
     quick_facts = chunk.get("quick_facts")
     if isinstance(quick_facts, dict):
         for key, value in quick_facts.items():
@@ -367,7 +372,7 @@ def _upsert(collection: Any, records: list[tuple[dict[str, Any], list[float]]]) 
 
 def _smoke_query(collection: Any, model: Any, options: EmbeddingOptions) -> dict[str, Any]:
     instruction = options.query_instruction.strip()
-    query = " ".join(part for part in [instruction, "credit hours for the AI program"] if part)
+    query = " ".join(part for part in [instruction, "movie plot and story"] if part)
     vector = model.encode(
         [query],
         normalize_embeddings=options.normalize,
@@ -389,11 +394,7 @@ def _smoke_query(collection: Any, model: Any, options: EmbeddingOptions) -> dict
         }
         for index, metadata in enumerate(metadatas)
     ]
-    sensible = any(
-        "artificial intelligence" in hit["title"].lower() or " ai " in f" {hit['title'].lower()} "
-        for hit in hits
-    )
-    return {"query": "credit hours for the AI program", "sensible": sensible, "hits": hits}
+    return {"query": "movie plot and story", "sensible": bool(hits), "hits": hits}
 
 
 def _open_cache(path: Path) -> sqlite3.Connection:

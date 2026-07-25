@@ -6,27 +6,29 @@ from app.rechunking.pipeline import RechunkOptions, rechunk_run
 
 def _document(document_id: str = "doc-1") -> dict:
     overview = (
-        "Students develop practical analytical skills for modern organizations. "
-        "The curriculum emphasizes applied projects and responsible decision making."
+        "A researcher intercepts a signal sent from tomorrow. "
+        "The discovery forces a choice between family and the future."
     )
     outcomes = " ".join(
         [
-            "Graduates evaluate evidence, communicate findings, and build reliable systems."
+            "The team crosses a fractured city while the signal reveals another warning."
             for _ in range(8)
         ]
     )
     return {
         "id": document_id,
-        "title": "Data Science, M.S.",
-        "url": "https://example.edu/programs/data-science/",
-        "category": "Information Technology",
-        "quick_facts": {"credit_hours": "30", "delivery_format": "Online"},
+        "title": "The Future Film",
+        "url": "https://www.imdb.com/title/tt0000001/",
+        "year": 2026,
+        "genres": ["Science Fiction", "Drama"],
+        "imdb_rating": 7.4,
+        "quick_facts": {"runtime": 120, "imdb_rating": 7.4},
         "sections": [
             {"heading": "Notice", "content": "Apply today."},
             {"heading": "Overview", "content": overview},
             {"heading": "Outcomes", "content": outcomes},
         ],
-        "text": f"Data Science, M.S.\n\n{overview}\n\n{outcomes}",
+        "text": f"The Future Film\n\n{overview}\n\n{outcomes}",
     }
 
 
@@ -62,8 +64,8 @@ def test_section_aware_rechunk_adds_metadata_and_report(tmp_path):
     assert report["oversized_sections_split"] == 1
     assert report["tiny_sections_merged"] == 1
     assert report["total_chunks"] == len(chunks)
-    assert chunks[0]["text"].startswith("Program: Data Science, M.S.")
-    assert "Quick facts: Credit Hours: 30 | Delivery Format: Online" in chunks[0]["text"]
+    assert chunks[0]["text"].startswith("Movie: The Future Film")
+    assert "Quick facts: Imdb Rating: 7.4 | Runtime: 120" in chunks[0]["text"]
     assert "Apply today." in chunks[0]["text"]
     assert [chunk["chunk_number"] for chunk in chunks] == list(range(len(chunks)))
     assert all(
@@ -76,6 +78,7 @@ def test_section_aware_rechunk_adds_metadata_and_report(tmp_path):
     assert (run_dir / "chunk_manifest.json").exists()
     assert (run_dir / "chunk_report.json").exists()
     assert (run_dir / "chunk_errors.log").exists()
+    assert (run_dir / "movie_chunks.jsonl").exists()
 
     original_ids = [chunk["id"] for chunk in chunks]
     second_report = rechunk_run(data_dir=tmp_path, run_id="run-1", options=options)

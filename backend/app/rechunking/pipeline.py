@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import statistics
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -193,7 +194,9 @@ def _rechunk_locked(
                         "chunk_number": document_chunk_count,
                         "title": str(document.get("title") or ""),
                         "section": raw_chunk["section"],
-                        "category": document.get("category"),
+                        "year": document.get("year"),
+                        "genres": document.get("genres") or [],
+                        "imdb_rating": document.get("imdb_rating"),
                         "url": str(document.get("url") or ""),
                         "quick_facts": document.get("quick_facts") or {},
                         "text": final_text,
@@ -260,6 +263,12 @@ def _rechunk_locked(
         }
 
         chunks_temporary.replace(chunks_path)
+        movie_chunks_temporary = _temporary_file(run_dir, "movie-chunks")
+        try:
+            shutil.copyfile(chunks_path, movie_chunks_temporary)
+            movie_chunks_temporary.replace(run_dir / "movie_chunks.jsonl")
+        finally:
+            movie_chunks_temporary.unlink(missing_ok=True)
         errors_temporary.replace(errors_path)
         _write_json_atomic(report_path, report)
         _write_json_atomic(manifest_path, manifest)
@@ -412,7 +421,7 @@ def _enrich_text(
     if not embed_prefix:
         return text
 
-    prefix = [f"Program: {str(document.get('title') or '').strip()}"]
+    prefix = [f"Movie: {str(document.get('title') or '').strip()}"]
     quick_facts = document.get("quick_facts")
     if first_chunk and isinstance(quick_facts, dict) and quick_facts:
         rendered = " | ".join(

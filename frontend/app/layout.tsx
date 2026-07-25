@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "UC Degree Scraper",
-  description: "University degree scraping workspace",
+  title: "Movie RAG",
+  description: "IMDb and TMDb movie research workspace",
 };
 
 export default function RootLayout({

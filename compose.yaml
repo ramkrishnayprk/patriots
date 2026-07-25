@@ -1,4 +1,4 @@
-name: uc-degree-scraper
+name: movie-rag
 
 services:
   frontend:
@@ -52,7 +52,7 @@ services:
     build:
       context: ./backend
       target: runtime
-    command: ["rq", "worker", "--url", "redis://redis:6379/0", "scraping"]
+    command: ["rq", "worker", "--url", "redis://redis:6379/0", "acquisition"]
     env_file: .env
     volumes:
       - ./backend/data:/app/data

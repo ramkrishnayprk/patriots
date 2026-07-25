@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 
@@ -24,20 +25,35 @@ def _number(name: str, default: float, minimum: float = 0) -> float:
     return value
 
 
+def _csv(name: str, default: str) -> tuple[str, ...]:
+    return tuple(value.strip() for value in os.getenv(name, default).split(",") if value.strip())
+
+
 @dataclass(frozen=True)
 class Settings:
-    scraperapi_key: str
-    scraperapi_endpoint: str
-    redis_url: str
-    base_url: str
-    allowed_domain: str
-    max_pages: int
-    min_delay_seconds: float
-    max_delay_seconds: float
+    tmdb_api_key: str
+    tmdb_base_url: str
+    tmdb_rate_limit: int
+    tmdb_rate_window_seconds: float
+    tmdb_transient_cache_hours: float
+    imdb_dataset_base_url: str
+    movie_window_start: date
+    movie_title_types: tuple[str, ...]
+    movie_include_adult: bool
+    movie_region_preference: str
+    movie_top_cast_limit: int
+    movie_max_candidates: int
+    enable_wikipedia: bool
     request_timeout_seconds: float
-    render_javascript: bool
-    checkpoint_interval: int
+    download_chunk_bytes: int
+    user_agent: str
+    redis_url: str
     data_dir: Path
+    openai_api_key: str
+    openai_model: str
+    openai_timeout_seconds: float
+    openai_max_output_tokens: int
+    generation_min_rerank_score: float
     chunk_size: int
     chunk_overlap: int
     min_chunk: int
@@ -52,25 +68,68 @@ class Settings:
     embedding_distance_metric: str
     embedding_query_instruction: str
     embedding_passage_prefix: str
-    user_agent: str
+    reranker_model_name: str
+    retrieval_top_k_dense: int
+    retrieval_top_k_sparse: int
+    retrieval_rrf_k: int
+    retrieval_rerank_top_n: int
+    retrieval_final_k: int
+    retrieval_confidence_threshold: float
+    retrieval_max_per_document: int
+    retrieval_max_query_chars: int
+    retrieval_enable_filters: bool
+    structured_backend: str
+    structured_records_filename: str
+    structured_max_list_items: int
 
     @classmethod
     def from_env(cls) -> "Settings":
+        try:
+            window_start = date.fromisoformat(
+                os.getenv("MOVIE_WINDOW_START", "2026-01-01").strip()
+            )
+        except ValueError as exc:
+            raise ValueError("MOVIE_WINDOW_START must use YYYY-MM-DD.") from exc
+
         settings = cls(
-            scraperapi_key=os.getenv("SCRAPERAPI_KEY", "").strip(),
-            scraperapi_endpoint=os.getenv(
-                "SCRAPERAPI_ENDPOINT", "https://api.scraperapi.com"
+            tmdb_api_key=os.getenv("TMDB_API_KEY", "").strip(),
+            tmdb_base_url=os.getenv(
+                "TMDB_BASE_URL", "https://api.themoviedb.org/3"
+            ).strip().rstrip("/"),
+            tmdb_rate_limit=_integer("TMDB_RATE_LIMIT", 37),
+            tmdb_rate_window_seconds=_number(
+                "TMDB_RATE_WINDOW_SECONDS", 10, minimum=0.1
+            ),
+            tmdb_transient_cache_hours=_number(
+                "TMDB_TRANSIENT_CACHE_HOURS", 24, minimum=0
+            ),
+            imdb_dataset_base_url=os.getenv(
+                "IMDB_DATASET_BASE_URL", "https://datasets.imdbws.com"
+            ).strip().rstrip("/"),
+            movie_window_start=window_start,
+            movie_title_types=_csv("MOVIE_TITLE_TYPES", "movie"),
+            movie_include_adult=_boolean("MOVIE_INCLUDE_ADULT", False),
+            movie_region_preference=os.getenv(
+                "MOVIE_REGION_PREFERENCE", "US"
+            ).strip().upper(),
+            movie_top_cast_limit=_integer("MOVIE_TOP_CAST_LIMIT", 10),
+            movie_max_candidates=_integer("MOVIE_MAX_CANDIDATES", 2_500),
+            enable_wikipedia=_boolean("ENABLE_WIKIPEDIA", False),
+            request_timeout_seconds=_number("REQUEST_TIMEOUT_SECONDS", 90, minimum=1),
+            download_chunk_bytes=_integer("DOWNLOAD_CHUNK_BYTES", 1_048_576),
+            user_agent=os.getenv(
+                "USER_AGENT",
+                "Movie-RAG-Research-Pipeline/1.0 (private educational project)",
             ).strip(),
             redis_url=os.getenv("REDIS_URL", "redis://redis:6379/0").strip(),
-            base_url=os.getenv("BASE_URL", "https://degrees.ucumberlands.edu/").strip(),
-            allowed_domain=os.getenv("ALLOWED_DOMAIN", "degrees.ucumberlands.edu").strip().lower(),
-            max_pages=_integer("MAX_PAGES", 300),
-            min_delay_seconds=_number("MIN_DELAY_SECONDS", 0.75),
-            max_delay_seconds=_number("MAX_DELAY_SECONDS", 1.75),
-            request_timeout_seconds=_number("REQUEST_TIMEOUT_SECONDS", 90, minimum=1),
-            render_javascript=_boolean("RENDER_JAVASCRIPT", False),
-            checkpoint_interval=_integer("CHECKPOINT_INTERVAL", 10),
             data_dir=Path(os.getenv("DATA_DIR", "/app/data")),
+            openai_api_key=os.getenv("OPENAI_API_KEY", "").strip(),
+            openai_model=os.getenv("OPENAI_MODEL", "gpt-5.6-terra").strip(),
+            openai_timeout_seconds=_number("OPENAI_TIMEOUT_SECONDS", 30, minimum=1),
+            openai_max_output_tokens=_integer("OPENAI_MAX_OUTPUT_TOKENS", 600),
+            generation_min_rerank_score=_number(
+                "GENERATION_MIN_RERANK_SCORE", -4.5, minimum=-100
+            ),
             chunk_size=_integer("CHUNK_SIZE", 1200, minimum=100),
             chunk_overlap=_integer("CHUNK_OVERLAP", 200, minimum=0),
             min_chunk=_integer("MIN_CHUNK", 150, minimum=1),
@@ -84,43 +143,75 @@ class Settings:
             embedding_normalize=_boolean("EMBEDDING_NORMALIZE", True),
             embedding_batch_size=_integer("EMBEDDING_BATCH_SIZE", 64),
             embedding_device=os.getenv("EMBEDDING_DEVICE", "auto").strip().lower(),
-            embedding_distance_metric=os.getenv("EMBEDDING_DISTANCE_METRIC", "cosine")
-            .strip()
-            .lower(),
+            embedding_distance_metric=os.getenv(
+                "EMBEDDING_DISTANCE_METRIC", "cosine"
+            ).strip().lower(),
             embedding_query_instruction=os.getenv(
                 "EMBEDDING_QUERY_INSTRUCTION",
                 "Represent this sentence for searching relevant passages: ",
             ).strip(),
             embedding_passage_prefix=os.getenv("EMBEDDING_PASSAGE_PREFIX", ""),
-            user_agent=os.getenv(
-                "USER_AGENT",
-                "UC-Program-RAG-Research-Bot/1.0 "
-                "(educational indexing of public university program pages)",
+            reranker_model_name=os.getenv(
+                "RERANKER_MODEL_NAME", "Xenova/ms-marco-MiniLM-L-6-v2"
             ).strip(),
+            retrieval_top_k_dense=_integer("RETRIEVAL_TOP_K_DENSE", 20),
+            retrieval_top_k_sparse=_integer("RETRIEVAL_TOP_K_SPARSE", 20),
+            retrieval_rrf_k=_integer("RETRIEVAL_RRF_K", 60),
+            retrieval_rerank_top_n=_integer("RETRIEVAL_RERANK_TOP_N", 30),
+            retrieval_final_k=_integer("RETRIEVAL_FINAL_K", 5),
+            retrieval_confidence_threshold=_number(
+                "RETRIEVAL_CONFIDENCE_THRESHOLD", 0.01
+            ),
+            retrieval_max_per_document=_integer("RETRIEVAL_MAX_PER_DOCUMENT", 2),
+            retrieval_max_query_chars=_integer("RETRIEVAL_MAX_QUERY_CHARS", 1000),
+            retrieval_enable_filters=_boolean("RETRIEVAL_ENABLE_FILTERS", True),
+            structured_backend=os.getenv("STRUCTURED_BACKEND", "jsonl").strip().lower(),
+            structured_records_filename=os.getenv(
+                "STRUCTURED_RECORDS_FILENAME", "movies_2026.jsonl"
+            ).strip(),
+            structured_max_list_items=_integer("STRUCTURED_MAX_LIST_ITEMS", 50),
         )
         settings.validate()
         return settings
 
     def validate(self) -> None:
-        if self.max_delay_seconds < self.min_delay_seconds:
-            raise ValueError(
-                "MAX_DELAY_SECONDS must be greater than or equal to MIN_DELAY_SECONDS."
-            )
+        if not self.tmdb_base_url.startswith("https://"):
+            raise ValueError("TMDB_BASE_URL must be an HTTPS URL.")
+        if not self.imdb_dataset_base_url.startswith("https://"):
+            raise ValueError("IMDB_DATASET_BASE_URL must be an HTTPS URL.")
+        if not self.movie_title_types:
+            raise ValueError("MOVIE_TITLE_TYPES cannot be empty.")
         if self.chunk_overlap >= self.chunk_size:
             raise ValueError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE.")
         if self.min_chunk > self.chunk_size:
             raise ValueError("MIN_CHUNK must be smaller than or equal to CHUNK_SIZE.")
         if self.chunk_strategy not in {"recursive", "section_aware"}:
             raise ValueError("CHUNK_STRATEGY must be recursive or section_aware.")
-        if not self.embedding_model_name:
-            raise ValueError("EMBEDDING_MODEL_NAME cannot be empty.")
+        if not self.embedding_model_name or not self.reranker_model_name:
+            raise ValueError("Embedding and reranker model names cannot be empty.")
+        if not self.openai_model:
+            raise ValueError("OPENAI_MODEL cannot be empty.")
         if self.embedding_device not in {"auto", "cpu"}:
             raise ValueError("EMBEDDING_DEVICE must be auto or cpu for FastEmbed.")
         if self.embedding_distance_metric != "cosine":
             raise ValueError("EMBEDDING_DISTANCE_METRIC must be cosine.")
-        if not self.allowed_domain:
-            raise ValueError("ALLOWED_DOMAIN cannot be empty.")
+        if self.retrieval_confidence_threshold > 1:
+            raise ValueError("RETRIEVAL_CONFIDENCE_THRESHOLD cannot exceed 1.")
+        if self.generation_min_rerank_score > 100:
+            raise ValueError("GENERATION_MIN_RERANK_SCORE cannot exceed 100.")
+        if self.structured_backend not in {"jsonl"}:
+            raise ValueError("STRUCTURED_BACKEND must be jsonl.")
+        if (
+            not self.structured_records_filename
+            or Path(self.structured_records_filename).name
+            != self.structured_records_filename
+        ):
+            raise ValueError("STRUCTURED_RECORDS_FILENAME must be a plain filename.")
 
-    def require_scraperapi_key(self) -> None:
-        if not self.scraperapi_key:
-            raise ValueError("SCRAPERAPI_KEY is missing. Add it to the root .env file.")
+    def require_tmdb_api_key(self) -> None:
+        if not self.tmdb_api_key:
+            raise ValueError("TMDB_API_KEY is missing. Add it to the root .env file.")
+
+    def require_openai_api_key(self) -> None:
+        if not self.openai_api_key:
+            raise ValueError("OPENAI_API_KEY is missing. Add it to the root .env file.")
