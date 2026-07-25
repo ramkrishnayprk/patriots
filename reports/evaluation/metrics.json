@@ -1,0 +1,206 @@
+{
+  "run_id": "combined-movies",
+  "items": 40,
+  "evaluation_status": "exploratory_unverified_gold",
+  "notes": [
+    "B0 is an offline always-refuse control, not an LLM closed-book run.",
+    "Answer correctness and citation validity are retrieval-support proxies.",
+    "Refusal metrics use retrieval-gate decisions; no paid generation calls were made.",
+    "The test split is exploratory and must be rerun once after human verification."
+  ],
+  "baselines": {
+    "B0_closed_book_refusal": {
+      "all": {
+        "queries": 40,
+        "recall_at_5": 0.0,
+        "recall_at_20": 0.0,
+        "mrr": 0.0,
+        "ndcg_at_10": 0.0,
+        "answer_correctness_proxy": 0.0,
+        "citation_validity_proxy": 0.0,
+        "correct_refusal_rate": 1.0,
+        "over_refusal_rate": 1.0,
+        "latency_p50_ms": 0.0,
+        "latency_p95_ms": 0.001,
+        "cost_per_query_usd": 0.0
+      },
+      "dev": {
+        "queries": 24,
+        "recall_at_5": 0.0,
+        "recall_at_20": 0.0,
+        "mrr": 0.0,
+        "ndcg_at_10": 0.0,
+        "answer_correctness_proxy": 0.0,
+        "citation_validity_proxy": 0.0,
+        "correct_refusal_rate": 1.0,
+        "over_refusal_rate": 1.0,
+        "latency_p50_ms": 0.0,
+        "latency_p95_ms": 0.001,
+        "cost_per_query_usd": 0.0
+      },
+      "test": {
+        "queries": 16,
+        "recall_at_5": 0.0,
+        "recall_at_20": 0.0,
+        "mrr": 0.0,
+        "ndcg_at_10": 0.0,
+        "answer_correctness_proxy": 0.0,
+        "citation_validity_proxy": 0.0,
+        "correct_refusal_rate": 1.0,
+        "over_refusal_rate": 1.0,
+        "latency_p50_ms": 0.0,
+        "latency_p95_ms": 0.001,
+        "cost_per_query_usd": 0.0
+      }
+    },
+    "B1_bm25": {
+      "all": {
+        "queries": 40,
+        "recall_at_5": 1.0,
+        "recall_at_20": 1.0,
+        "mrr": 0.9770114942528735,
+        "ndcg_at_10": 0.9827586206896551,
+        "answer_correctness_proxy": 1.0,
+        "citation_validity_proxy": 1.0,
+        "correct_refusal_rate": 0.0,
+        "over_refusal_rate": 0.0,
+        "latency_p50_ms": 14.691,
+        "latency_p95_ms": 19.0738,
+        "cost_per_query_usd": 0.0
+      },
+      "dev": {
+        "queries": 24,
+        "recall_at_5": 1.0,
+        "recall_at_20": 1.0,
+        "mrr": 0.9607843137254901,
+        "ndcg_at_10": 0.9705882352941176,
+        "answer_correctness_proxy": 1.0,
+        "citation_validity_proxy": 1.0,
+        "correct_refusal_rate": 0.0,
+        "over_refusal_rate": 0.0,
+        "latency_p50_ms": 14.2345,
+        "latency_p95_ms": 18.82105,
+        "cost_per_query_usd": 0.0
+      },
+      "test": {
+        "queries": 16,
+        "recall_at_5": 1.0,
+        "recall_at_20": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_10": 1.0,
+        "answer_correctness_proxy": 1.0,
+        "citation_validity_proxy": 1.0,
+        "correct_refusal_rate": 0.0,
+        "over_refusal_rate": 0.0,
+        "latency_p50_ms": 15.134,
+        "latency_p95_ms": 19.785,
+        "cost_per_query_usd": 0.0
+      }
+    },
+    "B2_dense_naive": {
+      "all": {
+        "queries": 40,
+        "recall_at_5": 0.9655172413793104,
+        "recall_at_20": 0.9655172413793104,
+        "mrr": 0.9655172413793104,
+        "ndcg_at_10": 0.9655172413793104,
+        "answer_correctness_proxy": 0.9655172413793104,
+        "citation_validity_proxy": 0.9655172413793104,
+        "correct_refusal_rate": 0.0,
+        "over_refusal_rate": 0.0,
+        "latency_p50_ms": 21.507,
+        "latency_p95_ms": 36.30364999999999,
+        "cost_per_query_usd": 0.0
+      },
+      "dev": {
+        "queries": 24,
+        "recall_at_5": 0.9411764705882353,
+        "recall_at_20": 0.9411764705882353,
+        "mrr": 0.9411764705882353,
+        "ndcg_at_10": 0.9411764705882353,
+        "answer_correctness_proxy": 0.9411764705882353,
+        "citation_validity_proxy": 0.9411764705882353,
+        "correct_refusal_rate": 0.0,
+        "over_refusal_rate": 0.0,
+        "latency_p50_ms": 21.507,
+        "latency_p95_ms": 33.39834999999999,
+        "cost_per_query_usd": 0.0
+      },
+      "test": {
+        "queries": 16,
+        "recall_at_5": 1.0,
+        "recall_at_20": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_10": 1.0,
+        "answer_correctness_proxy": 1.0,
+        "citation_validity_proxy": 1.0,
+        "correct_refusal_rate": 0.0,
+        "over_refusal_rate": 0.0,
+        "latency_p50_ms": 21.813000000000002,
+        "latency_p95_ms": 37.675250000000005,
+        "cost_per_query_usd": 0.0
+      }
+    },
+    "B3_final": {
+      "all": {
+        "queries": 40,
+        "recall_at_5": 1.0,
+        "recall_at_20": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_10": 1.0,
+        "answer_correctness_proxy": 1.0,
+        "citation_validity_proxy": 1.0,
+        "correct_refusal_rate": 0.09090909090909091,
+        "over_refusal_rate": 0.0,
+        "latency_p50_ms": 1328.3925,
+        "latency_p95_ms": 1532.0656999999997,
+        "cost_per_query_usd": 0.0
+      },
+      "dev": {
+        "queries": 24,
+        "recall_at_5": 1.0,
+        "recall_at_20": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_10": 1.0,
+        "answer_correctness_proxy": 1.0,
+        "citation_validity_proxy": 1.0,
+        "correct_refusal_rate": 0.14285714285714285,
+        "over_refusal_rate": 0.0,
+        "latency_p50_ms": 1255.3225000000002,
+        "latency_p95_ms": 1492.9569499999998,
+        "cost_per_query_usd": 0.0
+      },
+      "test": {
+        "queries": 16,
+        "recall_at_5": 1.0,
+        "recall_at_20": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_10": 1.0,
+        "answer_correctness_proxy": 1.0,
+        "citation_validity_proxy": 1.0,
+        "correct_refusal_rate": 0.0,
+        "over_refusal_rate": 0.0,
+        "latency_p50_ms": 1375.507,
+        "latency_p95_ms": 1619.2805,
+        "cost_per_query_usd": 0.0
+      }
+    }
+  },
+  "uncertainty": {
+    "B3_minus_B2_answer_correctness_proxy": {
+      "delta": 0.034482758620689655,
+      "ci95_low": 0.0,
+      "ci95_high": 0.10344827586206896,
+      "bootstrap_samples": 5000
+    }
+  },
+  "b0_incorrect_subset": {
+    "items": 29,
+    "definition": "All answerable items because the offline B0 control refused all.",
+    "B3_answer_correctness_proxy": 1.0
+  },
+  "error_analysis": {
+    "labeled_failures": 15,
+    "source": "First 15 deterministic failures across B1-B3."
+  }
+}

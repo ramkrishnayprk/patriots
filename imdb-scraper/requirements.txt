@@ -1,0 +1,4 @@
+beautifulsoup4==4.13.5
+lxml==6.0.2
+requests==2.32.5
+urllib3==2.5.0

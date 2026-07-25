@@ -1,0 +1,21 @@
+name: standalone-imdb-scraper
+
+services:
+  scraper:
+    build:
+      context: .
+      target: runtime
+    env_file:
+      - ../.env
+    environment:
+      IMDB_SCRAPER_SEEDS_PATH: /app/config/seed_urls.txt
+      IMDB_SCRAPER_OUTPUT_DIR: /app/data
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config:ro
+
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
