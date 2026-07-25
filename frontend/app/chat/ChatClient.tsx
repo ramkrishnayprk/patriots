@@ -11,6 +11,7 @@ import MessageBubble from "./components/MessageBubble";
 import TypingIndicator from "./components/TypingIndicator";
 import ChatInput from "./components/ChatInput";
 import { readSSE } from "@/lib/sse";
+import { loadChatState, saveChatState } from "@/lib/storage";
 import { CURRENT_USER } from "@/lib/dummy/user";
 import type { ChatMessage, ChatSource, Conversation } from "@/lib/dummy/conversations";
 import type { ChatModel } from "@/lib/dummy/models";
@@ -31,17 +32,39 @@ export default function ChatClient() {
 
   useEffect(() => {
     async function bootstrap() {
-      const [modelsRes, convRes] = await Promise.all([fetch("/api/models"), fetch("/api/conversations")]);
+      const modelsRes = await fetch("/api/models");
       const modelsData = await modelsRes.json();
-      const convData = await convRes.json();
       setModels(modelsData.models);
-      setSelectedModelId(modelsData.models[0]?.id ?? "");
-      setConversations(convData.conversations);
-      setActiveId(convData.conversations[0]?.id ?? null);
+
+      // Prefer this browser's saved history (localStorage) so reloads don't
+      // lose anything; fall back to the dummy server store on first visit.
+      const saved = loadChatState();
+      if (saved && saved.conversations.length > 0) {
+        const validModelId = modelsData.models.some((m: ChatModel) => m.id === saved.selectedModelId)
+          ? saved.selectedModelId
+          : (modelsData.models[0]?.id ?? "");
+        const validActiveId = saved.conversations.some((c) => c.id === saved.activeId)
+          ? saved.activeId
+          : (saved.conversations[0]?.id ?? null);
+        setConversations(saved.conversations);
+        setActiveId(validActiveId);
+        setSelectedModelId(validModelId);
+      } else {
+        const convRes = await fetch("/api/conversations");
+        const convData = await convRes.json();
+        setConversations(convData.conversations);
+        setActiveId(convData.conversations[0]?.id ?? null);
+        setSelectedModelId(modelsData.models[0]?.id ?? "");
+      }
       setLoaded(true);
     }
     bootstrap();
   }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    saveChatState({ conversations, activeId, selectedModelId });
+  }, [conversations, activeId, selectedModelId, loaded]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
