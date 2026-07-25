@@ -10,7 +10,7 @@ import MuiLink from "@mui/material/Link";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import CitationBadge from "./CitationBadge";
-import { hostname } from "@/lib/markdown/stabilize";
+import { hostname, sourceOrdinal } from "@/lib/markdown/stabilize";
 import type { ChatSource } from "@/lib/chat/types";
 
 const MAX_VISIBLE = 3;
@@ -18,7 +18,13 @@ const MAX_VISIBLE = 3;
 // The number badge here is the exact same CitationBadge used inline in the
 // message text, so a reader can match "[2]" in a sentence to row 2 here at
 // a glance — that pairing is the whole point of this footer.
-export default function SourcesFooter({ sources }: { sources?: ChatSource[] }) {
+export default function SourcesFooter({
+  sources,
+  messageId,
+}: {
+  sources?: ChatSource[];
+  messageId: string;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   if (!sources || sources.length === 0) return null;
@@ -43,7 +49,7 @@ export default function SourcesFooter({ sources }: { sources?: ChatSource[] }) {
           {visible.map((s, i) => (
             <MuiLink
               key={s.id}
-              id={`cite-${i + 1}`}
+              id={`cite-${messageId}-${sourceOrdinal(s, i)}`}
               component="a"
               href={s.url}
               target="_blank"
@@ -67,7 +73,7 @@ export default function SourcesFooter({ sources }: { sources?: ChatSource[] }) {
                 },
               }}
             >
-              <CitationBadge n={i + 1} source={s} variant="list" />
+              <CitationBadge n={sourceOrdinal(s, i)} source={s} variant="list" />
               <Typography
                 className="cite-title"
                 variant="body2"

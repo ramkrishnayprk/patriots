@@ -99,3 +99,15 @@ export function hostname(url: string): string {
     return "";
   }
 }
+
+// The citation number a source answers to. The backend drops uncited sources
+// but keeps each survivor's original ordinal (see resolve_sources in
+// backend/app/generation/pipeline.py), so an answer citing [1] and [3] yields a
+// two-item array carrying ordinals 1 and 3. Indexing by array position would
+// renumber [3] to 2 in the footer and leave the inline [3] unresolved, so the
+// ordinal must come from the source itself. Non-numeric ids (chunk ids from
+// other retrieval paths) fall back to position.
+export function sourceOrdinal(source: { id?: string }, index: number): number {
+  const parsed = Number(source?.id);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : index + 1;
+}

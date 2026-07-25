@@ -4,6 +4,7 @@ import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import MuiLink from "@mui/material/Link";
 import CitationBadge from "./CitationBadge";
+import { sourceOrdinal } from "@/lib/markdown/stabilize";
 import type { ChatSource } from "@/lib/chat/types";
 
 const MONO_FONT = "ui-monospace, SFMono-Regular, Menlo, monospace";
@@ -192,7 +193,11 @@ export function createLinkComponent(sources?: ChatSource[]) {
   return function LinkComponent({ href, children }: { href?: string; children?: React.ReactNode }) {
     if (href?.startsWith("#cite-")) {
       const n = Number(href.slice(6));
-      return <CitationBadge n={n} source={sources?.[n - 1]} variant="inline" />;
+      // Match on the source's own ordinal, not its array position — the backend
+      // drops uncited sources while preserving ordinals (see sourceOrdinal).
+      const source =
+        sources?.find((candidate, index) => sourceOrdinal(candidate, index) === n);
+      return <CitationBadge n={n} source={source} variant="inline" />;
     }
     return (
       <MuiLink

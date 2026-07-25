@@ -88,7 +88,7 @@ export default function MessageBubble({ message, isStreaming }: MessageBubblePro
           )}
         </Paper>
 
-        {!isUser && <SourcesFooter sources={message.sources} />}
+        {!isUser && <SourcesFooter sources={message.sources} messageId={message.id} />}
       </Box>
     </Stack>
   );
