@@ -49,6 +49,7 @@ def test_imdb_streaming_join_filters_before_resolving_people(tmp_path):
     assert first["writers"] == ["W. Writer"]
     assert first["top_cast"][0]["name"] == "Lead Actor"
     assert first["genres"] == ["Drama", "Sci-Fi"]
+    assert first["akas"] == ["Film From Tomorrow"]
 
 
 def test_imdb_reader_accepts_fields_larger_than_python_default(tmp_path):
@@ -149,6 +150,7 @@ def _datasets(directory):
         "title.akas.tsv.gz": (
             "titleId\tordering\ttitle\tregion\tlanguage\ttypes\tattributes\tisOriginalTitle\n"
             "tt0000001\t1\tThe Future Film\tUS\ten\t\\N\t\\N\t0\n"
+            "tt0000001\t2\tFilm From Tomorrow\tGB\ten\t\\N\t\\N\t0\n"
         ),
     }
     paths = {}

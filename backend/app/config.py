@@ -51,6 +51,7 @@ class Settings:
     data_dir: Path
     openai_api_key: str
     openai_model: str
+    openai_allowed_models: tuple[str, ...]
     openai_timeout_seconds: float
     openai_max_output_tokens: int
     generation_min_rerank_score: float
@@ -81,9 +82,21 @@ class Settings:
     structured_backend: str
     structured_records_filename: str
     structured_max_list_items: int
+    structured_min_rating_votes: int
+    structured_default_rank_limit: int
+    title_lookup_min_score: float
+    title_lookup_ambiguity_margin: float
+    title_aliases_path: Path
+    query_expansion_enabled: bool
+    query_expansion_model: str
+    query_expansion_variations: int
+    query_expansion_hyde_enabled: bool
+    query_expansion_max_output_tokens: int
+    query_expansion_rrf_k: int
 
     @classmethod
     def from_env(cls) -> "Settings":
+        openai_model = os.getenv("OPENAI_MODEL", "gpt-5.6-terra").strip()
         try:
             window_start = date.fromisoformat(
                 os.getenv("MOVIE_WINDOW_START", "2026-01-01").strip()
@@ -124,7 +137,11 @@ class Settings:
             redis_url=os.getenv("REDIS_URL", "redis://redis:6379/0").strip(),
             data_dir=Path(os.getenv("DATA_DIR", "/app/data")),
             openai_api_key=os.getenv("OPENAI_API_KEY", "").strip(),
-            openai_model=os.getenv("OPENAI_MODEL", "gpt-5.6-terra").strip(),
+            openai_model=openai_model,
+            openai_allowed_models=_csv(
+                "OPENAI_ALLOWED_MODELS",
+                f"{openai_model},gpt-5.6-terra,gpt-5.6-luna",
+            ),
             openai_timeout_seconds=_number("OPENAI_TIMEOUT_SECONDS", 30, minimum=1),
             openai_max_output_tokens=_integer("OPENAI_MAX_OUTPUT_TOKENS", 600),
             generation_min_rerank_score=_number(
@@ -170,6 +187,32 @@ class Settings:
                 "STRUCTURED_RECORDS_FILENAME", "movies_2026.jsonl"
             ).strip(),
             structured_max_list_items=_integer("STRUCTURED_MAX_LIST_ITEMS", 50),
+            structured_min_rating_votes=_integer(
+                "STRUCTURED_MIN_RATING_VOTES", 1_000, minimum=0
+            ),
+            structured_default_rank_limit=_integer(
+                "STRUCTURED_DEFAULT_RANK_LIMIT", 10
+            ),
+            title_lookup_min_score=_number("TITLE_LOOKUP_MIN_SCORE", 86),
+            title_lookup_ambiguity_margin=_number(
+                "TITLE_LOOKUP_AMBIGUITY_MARGIN", 3
+            ),
+            title_aliases_path=Path(
+                os.getenv("TITLE_ALIASES_PATH", "/app/config/title_aliases.json")
+            ),
+            query_expansion_enabled=_boolean("QUERY_EXPANSION_ENABLED", True),
+            query_expansion_model=os.getenv(
+                "QUERY_EXPANSION_MODEL",
+                os.getenv("OPENAI_MODEL", "gpt-5.6-terra"),
+            ).strip(),
+            query_expansion_variations=_integer("QUERY_EXPANSION_VARIATIONS", 3),
+            query_expansion_hyde_enabled=_boolean(
+                "QUERY_EXPANSION_HYDE_ENABLED", True
+            ),
+            query_expansion_max_output_tokens=_integer(
+                "QUERY_EXPANSION_MAX_OUTPUT_TOKENS", 500
+            ),
+            query_expansion_rrf_k=_integer("QUERY_EXPANSION_RRF_K", 60),
         )
         settings.validate()
         return settings
@@ -191,6 +234,10 @@ class Settings:
             raise ValueError("Embedding and reranker model names cannot be empty.")
         if not self.openai_model:
             raise ValueError("OPENAI_MODEL cannot be empty.")
+        if not self.openai_allowed_models:
+            raise ValueError("OPENAI_ALLOWED_MODELS cannot be empty.")
+        if self.openai_model not in self.openai_allowed_models:
+            raise ValueError("OPENAI_MODEL must be included in OPENAI_ALLOWED_MODELS.")
         if self.embedding_device not in {"auto", "cpu"}:
             raise ValueError("EMBEDDING_DEVICE must be auto or cpu for FastEmbed.")
         if self.embedding_distance_metric != "cosine":
@@ -199,6 +246,14 @@ class Settings:
             raise ValueError("RETRIEVAL_CONFIDENCE_THRESHOLD cannot exceed 1.")
         if self.generation_min_rerank_score > 100:
             raise ValueError("GENERATION_MIN_RERANK_SCORE cannot exceed 100.")
+        if self.title_lookup_min_score > 100:
+            raise ValueError("TITLE_LOOKUP_MIN_SCORE cannot exceed 100.")
+        if self.title_lookup_ambiguity_margin > 100:
+            raise ValueError("TITLE_LOOKUP_AMBIGUITY_MARGIN cannot exceed 100.")
+        if not self.query_expansion_model:
+            raise ValueError("QUERY_EXPANSION_MODEL cannot be empty.")
+        if not 3 <= self.query_expansion_variations <= 4:
+            raise ValueError("QUERY_EXPANSION_VARIATIONS must be 3 or 4.")
         if self.structured_backend not in {"jsonl"}:
             raise ValueError("STRUCTURED_BACKEND must be jsonl.")
         if (

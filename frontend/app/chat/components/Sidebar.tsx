@@ -26,8 +26,8 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import TheatersRoundedIcon from "@mui/icons-material/TheatersRounded";
-import type { Conversation } from "@/lib/dummy/conversations";
-import type { ChatModel } from "@/lib/dummy/models";
+import type { Conversation } from "@/lib/chat/types";
+import type { ChatModel } from "@/lib/chat/models";
 import type { CurrentUser } from "@/lib/auth";
 
 const SIDEBAR_WIDTH = 300;
@@ -55,6 +55,7 @@ interface Props {
   onSelectModel: (id: string) => void;
   user: CurrentUser;
   onLogout: () => void;
+  disabled: boolean;
 }
 
 export default function Sidebar({
@@ -69,6 +70,7 @@ export default function Sidebar({
   onSelectModel,
   user,
   onLogout,
+  disabled,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -115,6 +117,7 @@ export default function Sidebar({
           variant="outlined"
           startIcon={<AddRoundedIcon />}
           onClick={onNewChat}
+          disabled={disabled}
           sx={{
             justifyContent: "flex-start",
             color: "#fff",

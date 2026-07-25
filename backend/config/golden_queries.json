@@ -1,0 +1,16 @@
+{
+  "entity_lookups": [
+    {
+      "query": "Show me details of Laggam Time",
+      "expected_title": "Laggam Time",
+      "expected_path": "structured",
+      "expected_operation": "entity_lookup"
+    },
+    {
+      "query": "Show me details of Lagam Time",
+      "expected_title": "Laggam Time",
+      "expected_path": "structured",
+      "expected_operation": "entity_lookup"
+    }
+  ]
+}

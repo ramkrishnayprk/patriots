@@ -1,84 +1,166 @@
-import { appendMessage, getConversation } from "@/lib/dummy/conversations";
-import { pickAnswer } from "@/lib/dummy/answer";
+import { NextResponse } from "next/server";
+import {
+  backendError,
+  backendFetch,
+  normalizeSources,
+  resolveRunId,
+  toConversation,
+} from "@/lib/backend";
 
-// Fake token-by-token stream over Server-Sent Events. The event shapes
-// ("delta" / "sources" / "done" / "error") intentionally mirror the
-// ChatStreamEvent union in lib/providers/types.ts (plus a "sources" event,
-// since real citations come from lib/retrieval.ts rather than the provider
-// stream) — swapping this route body for a real provider adapter call later
-// shouldn't require touching the client.
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function sseLine(event: Record<string, unknown>) {
-  return `data: ${JSON.stringify(event)}\n\n`;
-}
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const conversationId = typeof body?.conversationId === "string" ? body.conversationId : "";
+  const conversationId =
+    typeof body?.conversationId === "string" && body.conversationId
+      ? body.conversationId
+      : null;
   const message = typeof body?.message === "string" ? body.message.trim() : "";
+  const modelId = typeof body?.modelId === "string" ? body.modelId : "";
 
-  if (!conversationId || !message) {
-    return new Response("conversationId and message are required", { status: 400 });
+  if (!message) {
+    return NextResponse.json({ error: "message is required" }, { status: 400 });
   }
 
-  const conversation = getConversation(conversationId);
-  if (!conversation) {
-    return new Response("Conversation not found", { status: 404 });
-  }
-
-  const now = () => new Date().toISOString();
-  appendMessage(conversationId, {
-    id: `msg-${Date.now()}-u`,
-    role: "user",
-    content: message,
-    createdAt: now(),
-  });
-
-  const answer = pickAnswer(message);
-  const words = answer.text.split(" ");
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
-
-      // Simulated "thinking" delay before the first token, mirrors real
-      // retrieval + first-token latency.
-      await sleep(500);
-
-      let acc = "";
-      for (let i = 0; i < words.length; i++) {
-        const chunk = (i === 0 ? "" : " ") + words[i];
-        acc += chunk;
-        controller.enqueue(encoder.encode(sseLine({ type: "delta", text: chunk })));
-        await sleep(25 + Math.random() * 45);
+  try {
+    const runId = await resolveRunId();
+    let history: Array<{
+      role: "user" | "assistant";
+      content: string;
+      sources?: Array<{ title: string; url: string }>;
+    }> = [];
+    if (conversationId) {
+      const historyResponse = await backendFetch(
+        `/api/v1/sessions/${encodeURIComponent(conversationId)}`,
+      );
+      if (!historyResponse.ok) {
+        return NextResponse.json(
+          { error: await backendError(historyResponse) },
+          { status: historyResponse.status },
+        );
       }
+      const historyPayload = await historyResponse.json();
+      const storedMessages: unknown[] = Array.isArray(
+        historyPayload?.data?.messages,
+      )
+        ? historyPayload.data.messages
+        : [];
+      history = storedMessages
+        .slice(-8)
+        .filter(
+          (
+            item: unknown,
+          ): item is {
+            role: "user" | "assistant";
+            content: string;
+            sources?: Array<{ title?: string; url?: string }>;
+          } =>
+            Boolean(
+              item &&
+                typeof item === "object" &&
+                "role" in item &&
+                ((item as { role?: unknown }).role === "user" ||
+                  (item as { role?: unknown }).role === "assistant") &&
+                "content" in item &&
+                typeof (item as { content?: unknown }).content === "string",
+            ),
+        )
+        .map((item) => ({
+          role: item.role,
+          content: item.content,
+          ...(Array.isArray(item.sources)
+            ? {
+                sources: item.sources
+                  .filter(
+                    (source) =>
+                      source &&
+                      typeof source.title === "string" &&
+                      typeof source.url === "string",
+                  )
+                  .map((source) => ({
+                    title: source.title as string,
+                    url: source.url as string,
+                  })),
+              }
+            : {}),
+        }));
+    }
+    const answerResponse = await backendFetch(
+      `/api/v1/runs/${encodeURIComponent(runId)}/answer`,
+      {
+        method: "POST",
+        body: JSON.stringify({ query: message, history, model: modelId }),
+      },
+    );
+    if (!answerResponse.ok) {
+      return NextResponse.json(
+        { error: await backendError(answerResponse) },
+        { status: answerResponse.status },
+      );
+    }
 
-      if (answer.sources.length > 0) {
-        controller.enqueue(encoder.encode(sseLine({ type: "sources", sources: answer.sources })));
-      }
+    const answerPayload = await answerResponse.json();
+    const answerData = answerPayload?.data;
+    const answer =
+      typeof answerData?.answer === "string" ? answerData.answer.trim() : "";
+    if (!answer) {
+      return NextResponse.json(
+        { error: "The answer pipeline returned an empty response." },
+        { status: 502 },
+      );
+    }
 
-      appendMessage(conversationId, {
-        id: `msg-${Date.now()}-a`,
+    const sources = normalizeSources(answerData?.sources);
+    const now = new Date().toISOString();
+    const messages = [
+      {
+        role: "user",
+        content: message,
+        created_at: now,
+      },
+      {
         role: "assistant",
-        content: acc,
-        createdAt: now(),
-        sources: answer.sources.length > 0 ? answer.sources : undefined,
-      });
+        content: answer,
+        created_at: now,
+        ...(sources ? { sources } : {}),
+      },
+    ];
 
-      controller.enqueue(encoder.encode(sseLine({ type: "done" })));
-      controller.close();
-    },
-  });
+    const sessionResponse = conversationId
+      ? await backendFetch(
+          `/api/v1/sessions/${encodeURIComponent(conversationId)}/messages`,
+          {
+            method: "POST",
+            body: JSON.stringify({ messages }),
+          },
+        )
+      : await backendFetch("/api/v1/sessions", {
+          method: "POST",
+          body: JSON.stringify({
+            title: message.slice(0, 60),
+            model_id: modelId,
+            messages,
+          }),
+        });
+    if (!sessionResponse.ok) {
+      return NextResponse.json(
+        { error: await backendError(sessionResponse) },
+        { status: sessionResponse.status },
+      );
+    }
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-    },
-  });
+    const sessionPayload = await sessionResponse.json();
+    return NextResponse.json({
+      conversation: toConversation(sessionPayload.data),
+      answer: {
+        type: answerData.type,
+        path: answerData.path,
+        router: answerData.router,
+      },
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "The Flask backend is unavailable.";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }

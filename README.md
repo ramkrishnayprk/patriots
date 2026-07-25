@@ -142,9 +142,89 @@ curl -X POST "http://localhost:5001/api/v1/runs/JOB_ID/answer" \
   -d '{"query":"How many 2026 science fiction movies are rated above 7?"}'
 ```
 
-Enumeration, count, and filtering questions use `movies_2026.jsonl` and do not
-touch Chroma or OpenAI. Plot/story questions use the existing retrieval and
+The optional `model` field selects the OpenAI generation model. It must be
+listed in `OPENAI_ALLOWED_MODELS`; requests without it use `OPENAI_MODEL`.
+The UI model selector is populated from the same allowlist.
+
+```json
+{
+  "query": "What is Project Hail Mary about?",
+  "model": "gpt-5.6-terra"
+}
+```
+
+The endpoint accepts up to 12 prior `history` messages. The chat server forwards
+the latest eight stored messages so obvious references can be resolved without
+an LLM call:
+
+```json
+{
+  "query": "Explain more about the movie",
+  "history": [
+    {
+      "role": "assistant",
+      "content": "Laggam Time is about...",
+      "sources": [
+        {
+          "title": "Laggam Time",
+          "url": "https://www.imdb.com/title/tt34464200/"
+        }
+      ]
+    }
+  ]
+}
+```
+
+When the latest assistant response has exactly one movie source, references
+such as `it`, `the movie`, `explain more`, and `its director` are rewritten to
+that canonical title before routing. Multi-movie responses are left unresolved
+rather than guessed.
+
+Person searches, rankings, counts, and genre/date filters use
+`movies_2026.jsonl` and do not touch Chroma or OpenAI. Examples include
+`Paul Walker movies`, `top rated movies`, `how many action movies?`, and
+`movies released in June`. Plot/story questions use the existing retrieval and
 guarded cited-generation flow.
+
+Direct entity requests such as `Show me details of Laggam Time` first use a
+fuzzy title index over `title`, `original_title`, `akas`, and the curated
+`backend/config/title_aliases.json` map. A confident title match returns the
+structured movie record directly. A weak semantic request with a recognizable
+title is retried once with its canonical title.
+
+Only if retrieval remains weak does the pipeline call OpenAI for three query
+variations and one HyDE passage. It searches every variation, uses the HyDE
+passage for unfiltered dense/hybrid retrieval, and fuses the grounded result
+lists with reciprocal-rank fusion. The hypothetical passage is never sent to
+the final answer as evidence. Strong initial retrieval and successful fuzzy
+title retries do not incur this additional model call.
+
+Tune the ladder in `.env`:
+
+```dotenv
+TITLE_LOOKUP_MIN_SCORE=86
+TITLE_LOOKUP_AMBIGUITY_MARGIN=3
+TITLE_ALIASES_PATH=/app/config/title_aliases.json
+QUERY_EXPANSION_ENABLED=true
+QUERY_EXPANSION_MODEL=gpt-5.6-terra
+QUERY_EXPANSION_VARIATIONS=3
+QUERY_EXPANSION_HYDE_ENABLED=true
+QUERY_EXPANSION_MAX_OUTPUT_TOKENS=500
+QUERY_EXPANSION_RRF_K=60
+```
+
+Future acquisition runs preserve IMDb alternate titles in `akas`. New chunks
+also include title, original title, and alternate-title text so both dense and
+BM25 retrieval have access to entity names.
+
+IMDb rating rankings require at least 1,000 votes by default so a movie with
+one high rating does not top the results. Tune ranking behavior in `.env`:
+
+```dotenv
+STRUCTURED_MIN_RATING_VOTES=1000
+STRUCTURED_DEFAULT_RANK_LIMIT=10
+STRUCTURED_MAX_LIST_ITEMS=50
+```
 
 Automatic routing is the default. Override it when needed:
 
@@ -159,6 +239,43 @@ Automatic routing is the default. Override it when needed:
 The structured query service depends on a repository protocol. JSONL is the
 current adapter; a later SQL or API implementation can replace it without
 changing routing or response logic.
+
+Every valid answer request writes an append-only entry to
+`backend/data/query_logs/queries.jsonl`, including the decision, route,
+retrieval scores, title match, and escalation details. Review recent entries:
+
+```bash
+curl "http://localhost:5001/api/v1/query-logs?limit=100"
+curl "http://localhost:5001/api/v1/query-logs?decision=refused"
+curl "http://localhost:5001/api/v1/query-logs?triage_bucket=recall_miss_recovered"
+```
+
+Refusals are marked `needs_review` so they can be classified as
+`out_of_scope`, `recall_miss`, or `data_gap` during review. Confirmed aliases
+belong in `backend/config/title_aliases.json`; regression cases belong in
+`backend/config/golden_queries.json`.
+
+## Chat UI and session files
+
+Open `http://localhost:3000/chat` after starting Docker. The Next.js server
+connects to Flask over the internal Docker network and automatically selects
+the newest run containing `movies_2026.jsonl`. Set `BACKEND_RUN_ID` in `.env`
+to pin chat to a specific run.
+
+Clicking **New chat** opens an unsaved welcome screen. The first session file
+is created only after the answer pipeline returns successfully. Each session
+is stored as `backend/data/sessions/<uuid>.json` and subsequent exchanges are
+appended to the same file. The UI hides internal `[n]` grounding markers and
+shows citations as clickable source links beneath each answer.
+
+Flask session endpoints:
+
+- `GET /api/v1/sessions` — list saved chats
+- `POST /api/v1/sessions` — create a session
+- `GET /api/v1/sessions/<id>` — load one chat
+- `POST /api/v1/sessions/<id>/messages` — append messages
+- `PATCH /api/v1/sessions/<id>` — rename a chat
+- `DELETE /api/v1/sessions/<id>` — delete a chat
 
 ## Test
 
