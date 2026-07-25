@@ -4,7 +4,7 @@ import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import MuiLink from "@mui/material/Link";
 import CitationBadge from "./CitationBadge";
-import type { ChatSource } from "@/lib/dummy/conversations";
+import type { ChatSource } from "@/lib/chat/types";
 
 const MONO_FONT = "ui-monospace, SFMono-Regular, Menlo, monospace";
 

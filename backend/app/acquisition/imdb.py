@@ -145,6 +145,7 @@ def assemble_imdb_records(
         records[imdb_id]["_cast"] = sorted(values)[:top_cast_limit]
 
     regional_titles: dict[str, tuple[int, str]] = {}
+    alternate_titles: dict[str, set[str]] = {}
     for row in _rows(paths["title.akas.tsv.gz"]):
         imdb_id = row.get("titleId", "")
         if imdb_id not in kept_ids:
@@ -152,6 +153,7 @@ def assemble_imdb_records(
         title = _nullable(row.get("title"))
         if not title:
             continue
+        alternate_titles.setdefault(imdb_id, set()).add(title)
         region = row.get("region")
         language = row.get("language")
         score = 2 if region == region_preference else 1 if language == "en" else 0
@@ -170,6 +172,14 @@ def assemble_imdb_records(
         regional = regional_titles.get(imdb_id)
         if regional and regional[0] > 0:
             record["title"] = regional[1]
+        excluded_titles = {
+            value
+            for value in (record.get("title"), record.get("original_title"))
+            if value
+        }
+        record["akas"] = sorted(
+            alternate_titles.get(imdb_id, set()) - excluded_titles
+        )[:50]
         record["directors"] = [
             names.get(name_id, name_id) for name_id in record.pop("_director_ids")
         ]

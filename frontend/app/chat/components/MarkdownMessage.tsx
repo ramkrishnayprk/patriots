@@ -7,7 +7,7 @@ import Typography from "@mui/material/Typography";
 import { BASE_COMPONENTS, createLinkComponent } from "./markdownComponents";
 import remarkCitations from "@/lib/markdown/remarkCitations";
 import { stabilizeStreamingMarkdown } from "@/lib/markdown/stabilize";
-import type { ChatSource } from "@/lib/dummy/conversations";
+import type { ChatSource } from "@/lib/chat/types";
 
 interface MarkdownMessageProps {
   content: string;

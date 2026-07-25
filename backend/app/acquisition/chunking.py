@@ -43,11 +43,19 @@ def create_movie_chunks(
     """Chunk only real narrative text, retaining movie metadata for retrieval."""
     chunks = []
     chunk_number = 0
+    aliases = ", ".join(document.get("akas") or [])
+    identity_lines = [f"Title: {document['title']}"]
+    original_title = str(document.get("original_title") or "").strip()
+    if original_title and original_title != document["title"]:
+        identity_lines.append(f"Original title: {original_title}")
+    if aliases:
+        identity_lines.append(f"Also known as: {aliases}")
+    identity = "\n".join(identity_lines)
     for section in document.get("sections", []):
         heading = str(section.get("heading") or "Overview")
         content = str(section.get("content") or "").strip()
         for text in split_long_text(
-            f"{heading}\n\n{content}",
+            f"{identity}\n\n{heading}\n\n{content}",
             max_size=chunk_size,
             overlap=chunk_overlap,
         ):

@@ -14,11 +14,21 @@ import InputAdornment from "@mui/material/InputAdornment";
 import Collapse from "@mui/material/Collapse";
 import Link from "@mui/material/Link";
 import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
 import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
+import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+import GoogleIcon from "@mui/icons-material/Google";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import { createUser, login, type CurrentUser } from "@/lib/auth";
+import {
+  continueAsGuest,
+  createUser,
+  login,
+  type CurrentUser,
+} from "@/lib/auth";
 
 type Mode = "signup" | "login";
 
@@ -45,10 +55,12 @@ export default function AuthDialog({ open, initialMode, onClose, onSuccess }: Au
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showAccountForm, setShowAccountForm] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setMode(initialMode);
+    setShowAccountForm(false);
     resetForm();
   }, [open, initialMode]);
 
@@ -115,6 +127,10 @@ export default function AuthDialog({ open, initialMode, onClose, onSuccess }: Au
     onSuccess(result.data);
   }
 
+  function handleGuest() {
+    onSuccess(continueAsGuest());
+  }
+
   return (
     <Dialog
       open={open}
@@ -129,6 +145,8 @@ export default function AuthDialog({ open, initialMode, onClose, onSuccess }: Au
             border: "1px solid rgba(255,255,255,0.1)",
             borderRadius: 3,
             backgroundImage: "none",
+            overflow: "hidden",
+            maxHeight: "calc(100dvh - 24px)",
           },
         },
         backdrop: {
@@ -137,174 +155,280 @@ export default function AuthDialog({ open, initialMode, onClose, onSuccess }: Au
       }}
     >
       <Box component="form" noValidate onSubmit={handleSubmit}>
-        <DialogContent sx={{ p: 4 }}>
+        <DialogContent sx={{ p: { xs: 2.5, sm: 3 }, overflow: "hidden" }}>
           <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
-            <Box
-              sx={{
-                width: 44,
-                height: 44,
-                borderRadius: 2,
-                bgcolor: "rgba(242,177,52,0.12)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "primary.main",
-              }}
-            >
-              <ForumRoundedIcon />
-            </Box>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              {showAccountForm && (
+                <IconButton
+                  size="small"
+                  type="button"
+                  onClick={() => {
+                    setShowAccountForm(false);
+                    resetForm();
+                  }}
+                  aria-label="Back to sign-in options"
+                  sx={{ color: "text.secondary" }}
+                >
+                  <ArrowBackRoundedIcon fontSize="small" />
+                </IconButton>
+              )}
+              <Box
+                sx={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 2,
+                  bgcolor: "rgba(242,177,52,0.12)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "primary.main",
+                }}
+              >
+                <ForumRoundedIcon />
+              </Box>
+            </Stack>
             <IconButton size="small" onClick={onClose} sx={{ color: "text.secondary" }}>
               <CloseRoundedIcon fontSize="small" />
             </IconButton>
           </Stack>
 
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-            {mode === "signup" ? "Create your account" : "Welcome back"}
+            {!showAccountForm
+              ? "Start chatting with Cinebot"
+              : mode === "signup"
+                ? "Create your account"
+                : "Welcome back"}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            {mode === "signup" ? "Sign up to start chatting with Cinebot." : "Log in to continue chatting with Cinebot."}
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+            {!showAccountForm
+              ? "Continue instantly as a guest or use an account."
+              : mode === "signup"
+                ? "Sign up to save your local Cinebot profile."
+                : "Log in to continue chatting with Cinebot."}
           </Typography>
 
-          <Stack spacing={2}>
-            <Collapse in={mode === "signup"} unmountOnExit>
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  autoFocus={mode === "signup"}
-                  fullWidth
-                  label="First name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  error={Boolean(fieldErrors.firstName)}
-                  helperText={fieldErrors.firstName}
-                  disabled={submitting}
-                />
-                <TextField
-                  fullWidth
-                  label="Last name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  error={Boolean(fieldErrors.lastName)}
-                  helperText={fieldErrors.lastName}
-                  disabled={submitting}
-                />
-              </Stack>
-            </Collapse>
+          {!showAccountForm ? (
+            <Stack spacing={1.5}>
+              <Button
+                type="button"
+                variant="contained"
+                size="large"
+                startIcon={<PersonOutlineRoundedIcon />}
+                onClick={handleGuest}
+                sx={{ py: 1.25 }}
+              >
+                Continue as guest
+              </Button>
+              <Button
+                type="button"
+                variant="outlined"
+                size="large"
+                startIcon={<GoogleIcon />}
+                disabled
+                sx={{ py: 1.25 }}
+              >
+                Continue with Google — coming soon
+              </Button>
+              <Divider sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
+                or
+              </Divider>
+              <Button
+                type="button"
+                variant="text"
+                size="large"
+                startIcon={<AccountCircleOutlinedIcon />}
+                onClick={() => setShowAccountForm(true)}
+              >
+                Sign in or create an account
+              </Button>
+              <Typography
+                variant="caption"
+                sx={{ textAlign: "center", color: "text.secondary" }}
+              >
+                Guest access requires no registration details.
+              </Typography>
+            </Stack>
+          ) : (
+            <Stack spacing={1.5}>
+              <Collapse in={mode === "signup"} unmountOnExit>
+                <Stack direction="row" spacing={1.5}>
+                  <TextField
+                    autoFocus={mode === "signup"}
+                    size="small"
+                    fullWidth
+                    label="First name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    error={Boolean(fieldErrors.firstName)}
+                    helperText={fieldErrors.firstName}
+                    disabled={submitting}
+                  />
+                  <TextField
+                    size="small"
+                    fullWidth
+                    label="Last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    error={Boolean(fieldErrors.lastName)}
+                    helperText={fieldErrors.lastName}
+                    disabled={submitting}
+                  />
+                </Stack>
+              </Collapse>
 
-            {mode === "signup" ? (
-              <>
-                <TextField
-                  fullWidth
-                  label="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  error={Boolean(fieldErrors.username)}
-                  helperText={fieldErrors.username ?? "You'll use this to log in"}
-                  disabled={submitting}
-                />
-                <TextField
-                  fullWidth
-                  type="email"
-                  label="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  error={Boolean(fieldErrors.email)}
-                  helperText={fieldErrors.email}
-                  disabled={submitting}
-                />
-              </>
-            ) : (
-              <TextField
-                autoFocus
-                fullWidth
-                label="Username or email"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                error={Boolean(fieldErrors.identifier)}
-                helperText={fieldErrors.identifier}
-                disabled={submitting}
-              />
-            )}
-
-            <TextField
-              fullWidth
-              type={showPassword ? "text" : "password"}
-              label="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              error={Boolean(fieldErrors.password)}
-              helperText={fieldErrors.password}
-              disabled={submitting}
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setShowPassword((v) => !v)} tabIndex={-1}>
-                        {showPassword ? (
-                          <VisibilityOffRoundedIcon fontSize="small" />
-                        ) : (
-                          <VisibilityRoundedIcon fontSize="small" />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-            />
-
-            <Collapse in={mode === "signup"} unmountOnExit>
-              <TextField
-                fullWidth
-                type={showPassword ? "text" : "password"}
-                label="Confirm password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                error={Boolean(fieldErrors.confirmPassword)}
-                helperText={fieldErrors.confirmPassword}
-                disabled={submitting}
-              />
-            </Collapse>
-
-            {formError && <Alert severity="error">{formError}</Alert>}
-
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              size="large"
-              disabled={submitting}
-              sx={{ py: 1.25 }}
-            >
-              {submitting ? (
-                <CircularProgress size={18} sx={{ color: "primary.contrastText" }} />
-              ) : mode === "signup" ? (
-                "Create account"
-              ) : (
-                "Log in"
-              )}
-            </Button>
-
-            <Typography variant="body2" sx={{ textAlign: "center", color: "text.secondary" }}>
               {mode === "signup" ? (
-                <>
-                  Already have an account?{" "}
-                  <Link component="button" type="button" onClick={() => switchMode("login")} sx={{ color: "primary.light" }}>
-                    Log in
-                  </Link>
-                </>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    label="Username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    error={Boolean(fieldErrors.username)}
+                    helperText={fieldErrors.username ?? "Used for login"}
+                    disabled={submitting}
+                  />
+                  <TextField
+                    size="small"
+                    fullWidth
+                    type="email"
+                    label="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    error={Boolean(fieldErrors.email)}
+                    helperText={fieldErrors.email}
+                    disabled={submitting}
+                  />
+                </Stack>
               ) : (
-                <>
-                  New here?{" "}
-                  <Link component="button" type="button" onClick={() => switchMode("signup")} sx={{ color: "primary.light" }}>
-                    Create an account
-                  </Link>
-                </>
+                <TextField
+                  autoFocus
+                  size="small"
+                  fullWidth
+                  label="Username or email"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  error={Boolean(fieldErrors.identifier)}
+                  helperText={fieldErrors.identifier}
+                  disabled={submitting}
+                />
               )}
-            </Typography>
 
-            <Typography variant="caption" sx={{ textAlign: "center", color: "text.secondary", opacity: 0.7 }}>
-              Demo account — stored only in this browser, not sent anywhere.
-            </Typography>
-          </Stack>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+              >
+                <TextField
+                  size="small"
+                  fullWidth
+                  type={showPassword ? "text" : "password"}
+                  label="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  error={Boolean(fieldErrors.password)}
+                  helperText={fieldErrors.password}
+                  disabled={submitting}
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() => setShowPassword((value) => !value)}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <VisibilityOffRoundedIcon fontSize="small" />
+                            ) : (
+                              <VisibilityRoundedIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+
+                {mode === "signup" && (
+                  <TextField
+                    size="small"
+                    fullWidth
+                    type={showPassword ? "text" : "password"}
+                    label="Confirm password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    error={Boolean(fieldErrors.confirmPassword)}
+                    helperText={fieldErrors.confirmPassword}
+                    disabled={submitting}
+                  />
+                )}
+              </Stack>
+
+              {formError && <Alert severity="error">{formError}</Alert>}
+
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                size="large"
+                disabled={submitting}
+                sx={{ py: 1.1 }}
+              >
+                {submitting ? (
+                  <CircularProgress
+                    size={18}
+                    sx={{ color: "primary.contrastText" }}
+                  />
+                ) : mode === "signup" ? (
+                  "Create account"
+                ) : (
+                  "Log in"
+                )}
+              </Button>
+
+              <Typography
+                variant="body2"
+                sx={{ textAlign: "center", color: "text.secondary" }}
+              >
+                {mode === "signup" ? (
+                  <>
+                    Already have an account?{" "}
+                    <Link
+                      component="button"
+                      type="button"
+                      onClick={() => switchMode("login")}
+                      sx={{ color: "primary.light" }}
+                    >
+                      Log in
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    New here?{" "}
+                    <Link
+                      component="button"
+                      type="button"
+                      onClick={() => switchMode("signup")}
+                      sx={{ color: "primary.light" }}
+                    >
+                      Create an account
+                    </Link>
+                  </>
+                )}
+              </Typography>
+
+              <Typography
+                variant="caption"
+                sx={{
+                  textAlign: "center",
+                  color: "text.secondary",
+                  opacity: 0.7,
+                }}
+              >
+                Demo account — stored only in this browser.
+              </Typography>
+            </Stack>
+          )}
         </DialogContent>
       </Box>
     </Dialog>

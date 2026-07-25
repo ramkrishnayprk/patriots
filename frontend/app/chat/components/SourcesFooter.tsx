@@ -11,7 +11,7 @@ import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import CitationBadge from "./CitationBadge";
 import { hostname } from "@/lib/markdown/stabilize";
-import type { ChatSource } from "@/lib/dummy/conversations";
+import type { ChatSource } from "@/lib/chat/types";
 
 const MAX_VISIBLE = 3;
 
@@ -42,7 +42,7 @@ export default function SourcesFooter({ sources }: { sources?: ChatSource[] }) {
         <Stack spacing={0.5}>
           {visible.map((s, i) => (
             <MuiLink
-              key={s.chunkId}
+              key={s.id}
               id={`cite-${i + 1}`}
               component="a"
               href={s.url}

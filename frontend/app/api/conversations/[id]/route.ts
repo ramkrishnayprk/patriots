@@ -1,27 +1,67 @@
 import { NextResponse } from "next/server";
-import { deleteConversation, getConversation, renameConversation } from "@/lib/dummy/conversations";
+import {
+  backendError,
+  backendFetch,
+  toConversation,
+} from "@/lib/backend";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const conversation = getConversation(id);
-  if (!conversation) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ conversation });
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+export async function GET(_request: Request, { params }: RouteContext) {
+  return sessionRequest(await params, { method: "GET" });
 }
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function PATCH(request: Request, { params }: RouteContext) {
   const body = await request.json().catch(() => ({}));
-  const title = typeof body?.title === "string" ? body.title : "";
-  if (!title.trim()) return NextResponse.json({ error: "title is required" }, { status: 400 });
-
-  const conversation = renameConversation(id, title);
-  if (!conversation) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ conversation });
+  const title = typeof body?.title === "string" ? body.title.trim() : "";
+  if (!title) {
+    return NextResponse.json({ error: "title is required" }, { status: 400 });
+  }
+  return sessionRequest(await params, {
+    method: "PATCH",
+    body: JSON.stringify({ title }),
+  });
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_request: Request, { params }: RouteContext) {
   const { id } = await params;
-  const ok = deleteConversation(id);
-  if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ ok: true });
+  try {
+    const response = await backendFetch(`/api/v1/sessions/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: await backendError(response) },
+        { status: response.status },
+      );
+    }
+    return NextResponse.json({ ok: true, id });
+  } catch (error) {
+    return backendUnavailable(error);
+  }
+}
+
+async function sessionRequest({ id }: { id: string }, init: RequestInit) {
+  try {
+    const response = await backendFetch(
+      `/api/v1/sessions/${encodeURIComponent(id)}`,
+      init,
+    );
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: await backendError(response) },
+        { status: response.status },
+      );
+    }
+    const payload = await response.json();
+    return NextResponse.json({ conversation: toConversation(payload.data) });
+  } catch (error) {
+    return backendUnavailable(error);
+  }
+}
+
+function backendUnavailable(error: unknown) {
+  const message = error instanceof Error ? error.message : "The Flask backend is unavailable.";
+  return NextResponse.json({ error: message }, { status: 502 });
 }

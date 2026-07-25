@@ -12,7 +12,7 @@ import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import MarkdownMessage from "./MarkdownMessage";
 import SourcesFooter from "./SourcesFooter";
-import type { ChatMessage } from "@/lib/dummy/conversations";
+import type { ChatMessage } from "@/lib/chat/types";
 
 interface MessageBubbleProps {
   message: ChatMessage;
