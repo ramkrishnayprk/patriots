@@ -76,6 +76,76 @@ def test_delete_missing_session_returns_not_found(monkeypatch, tmp_path):
     assert response.get_json()["error"]["code"] == "session_not_found"
 
 
+def test_get_session_endpoint_returns_saved_document(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    client = create_app().test_client()
+    created = client.post("/api/v1/sessions").get_json()["data"]
+
+    response = client.get(f"/api/v1/sessions/{created['id']}")
+
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.get_json()["data"] == created
+
+
+def test_get_session_endpoint_validates_id_and_missing_session(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    client = create_app().test_client()
+
+    invalid = client.get("/api/v1/sessions/not-a-uuid")
+    missing = client.get("/api/v1/sessions/2e92dce3-8e37-4308-956f-628319d4f007")
+
+    assert invalid.status_code == 400
+    assert invalid.get_json()["error"]["code"] == "invalid_session_id"
+    assert missing.status_code == 404
+    assert missing.get_json()["error"]["code"] == "session_not_found"
+
+
+def test_add_session_message_endpoint_appends_and_persists(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    client = create_app().test_client()
+    created = client.post("/api/v1/sessions").get_json()["data"]
+    session_path = tmp_path / "sessions" / f"{created['id']}.json"
+
+    response = client.post(
+        f"/api/v1/sessions/{created['id']}/messages",
+        json={"role": "user", "content": "Who directed Oppenheimer?"},
+    )
+
+    assert response.status_code == 201
+    data = response.get_json()["data"]
+    assert data["title"] == "Who directed Oppenheimer?"
+    assert [m["role"] for m in data["messages"]] == ["user"]
+    assert data["messages"][0]["content"] == "Who directed Oppenheimer?"
+    assert json.loads(session_path.read_text(encoding="utf-8")) == data
+
+
+def test_add_session_message_endpoint_validates_role_and_content(monkeypatch, tmp_path):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    client = create_app().test_client()
+    created = client.post("/api/v1/sessions").get_json()["data"]
+
+    bad_role = client.post(
+        f"/api/v1/sessions/{created['id']}/messages",
+        json={"role": "system", "content": "hi"},
+    )
+    bad_content = client.post(
+        f"/api/v1/sessions/{created['id']}/messages",
+        json={"role": "user", "content": "   "},
+    )
+    missing_session = client.post(
+        "/api/v1/sessions/2e92dce3-8e37-4308-956f-628319d4f007/messages",
+        json={"role": "user", "content": "hi"},
+    )
+
+    assert bad_role.status_code == 400
+    assert bad_role.get_json()["error"]["code"] == "invalid_role"
+    assert bad_content.status_code == 400
+    assert bad_content.get_json()["error"]["code"] == "invalid_content"
+    assert missing_session.status_code == 404
+    assert missing_session.get_json()["error"]["code"] == "session_not_found"
+
+
 def test_get_rechunk_endpoint_rebuilds_existing_documents(monkeypatch, tmp_path):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     run_dir = tmp_path / "runs" / "api-run"
@@ -274,3 +344,82 @@ def test_answer_endpoint_rejects_invalid_mode():
 
     assert response.status_code == 400
     assert response.get_json()["error"]["code"] == "invalid_mode"
+
+
+def test_answer_endpoint_rejects_missing_session(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    client = create_app().test_client()
+
+    response = client.post(
+        "/api/v1/runs/a-run/answer",
+        json={
+            "query": "movie plot",
+            "session_id": "2e92dce3-8e37-4308-956f-628319d4f007",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.get_json()["error"]["code"] == "session_not_found"
+
+
+def test_answer_endpoint_with_session_id_persists_turn_and_feeds_history(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    routes = importlib.import_module("app.api.routes")
+    monkeypatch.setattr(routes, "is_model_installed", lambda *_args: True)
+    retrieval = {
+        "status": "ok",
+        "query": {"original": "movie plot", "normalized": "movie plot"},
+        "results": [{"rank": 1, "id": "chunk-1", "rerank_score": 4.0}],
+        "diagnostics": {"latency_ms": 1.0},
+    }
+    monkeypatch.setattr(routes, "search_run", lambda **_kwargs: retrieval)
+
+    received_history = []
+
+    def fake_generate_answer(_retrieval, *, options, dry_run=False, history=None):
+        received_history.append(history)
+        return {
+            "type": "answer",
+            "answer": "A grounded answer. [1]",
+            "sources": [
+                {
+                    "n": 1,
+                    "title": "The Future Film",
+                    "url": "https://www.imdb.com/title/tt0000001/",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(routes, "generate_answer", fake_generate_answer)
+    client = create_app().test_client()
+    session = client.post("/api/v1/sessions").get_json()["data"]
+
+    first = client.post(
+        "/api/v1/runs/a-run/answer",
+        json={"query": "movie plot", "session_id": session["id"]},
+    )
+
+    assert first.status_code == 200
+    first_data = first.get_json()["data"]
+    assert first_data["session_id"] == session["id"]
+    assert received_history[0] == []
+
+    session_path = tmp_path / "sessions" / f"{session['id']}.json"
+    saved = json.loads(session_path.read_text(encoding="utf-8"))
+    assert [m["role"] for m in saved["messages"]] == ["user", "assistant"]
+    assert saved["messages"][0]["content"] == "movie plot"
+    assert saved["messages"][1]["content"] == "A grounded answer. [1]"
+    assert saved["messages"][1]["sources"][0]["title"] == "The Future Film"
+    assert saved["title"] == "movie plot"
+
+    second = client.post(
+        "/api/v1/runs/a-run/answer",
+        json={"query": "who directed it", "session_id": session["id"]},
+    )
+
+    assert second.status_code == 200
+    assert len(received_history[1]) == 2
+    assert received_history[1][0]["content"] == "movie plot"

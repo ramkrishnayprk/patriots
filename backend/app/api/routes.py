@@ -189,6 +189,125 @@ def list_sessions():
     return response
 
 
+@api.get("/sessions/<string:session_id>")
+def get_session(session_id: str):
+    try:
+        session = _session_store().get(session_id)
+    except InvalidSessionIdError as exc:
+        return (
+            jsonify({"error": {"code": "invalid_session_id", "message": str(exc)}}),
+            400,
+        )
+    except SessionNotFoundError:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "session_not_found",
+                        "message": "Session not found.",
+                    }
+                }
+            ),
+            404,
+        )
+    except SessionStorageError:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "session_storage_error",
+                        "message": "The session could not be read.",
+                    }
+                }
+            ),
+            500,
+        )
+
+    response = jsonify({"data": session})
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@api.post("/sessions/<string:session_id>/messages")
+def add_session_message(session_id: str):
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "invalid_json",
+                        "message": "Request body must be a JSON object.",
+                    }
+                }
+            ),
+            400,
+        )
+    role = payload.get("role")
+    if role not in {"user", "assistant"}:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "invalid_role",
+                        "message": "role must be 'user' or 'assistant'.",
+                    }
+                }
+            ),
+            400,
+        )
+    content = payload.get("content")
+    if not isinstance(content, str) or not content.strip():
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "invalid_content",
+                        "message": "content must be a non-empty string.",
+                    }
+                }
+            ),
+            400,
+        )
+
+    try:
+        session = _session_store().append_message(session_id, role, content)
+    except InvalidSessionIdError as exc:
+        return (
+            jsonify({"error": {"code": "invalid_session_id", "message": str(exc)}}),
+            400,
+        )
+    except SessionNotFoundError:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "session_not_found",
+                        "message": "Session not found.",
+                    }
+                }
+            ),
+            404,
+        )
+    except SessionStorageError:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "session_storage_error",
+                        "message": "The message could not be saved.",
+                    }
+                }
+            ),
+            500,
+        )
+
+    response = jsonify({"data": session})
+    response.status_code = 201
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @api.delete("/sessions/<string:session_id>")
 def delete_session(session_id: str):
     try:
@@ -480,6 +599,53 @@ def answer_query(run_id: str):
             ),
             400,
         )
+    session_id = payload.get("session_id")
+    if session_id is not None and not isinstance(session_id, str):
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "invalid_session_id",
+                        "message": "session_id must be a string.",
+                    }
+                }
+            ),
+            400,
+        )
+
+    session = None
+    if session_id is not None:
+        try:
+            session = _session_store().get(session_id)
+        except InvalidSessionIdError as exc:
+            return (
+                jsonify({"error": {"code": "invalid_session_id", "message": str(exc)}}),
+                400,
+            )
+        except SessionNotFoundError:
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "session_not_found",
+                            "message": "Session not found.",
+                        }
+                    }
+                ),
+                404,
+            )
+        except SessionStorageError:
+            return (
+                jsonify(
+                    {
+                        "error": {
+                            "code": "session_storage_error",
+                            "message": "The session could not be read.",
+                        }
+                    }
+                ),
+                500,
+            )
 
     try:
         settings = Settings.from_env()
@@ -513,6 +679,27 @@ def answer_query(run_id: str):
                     ),
                     404,
                 )
+            if session_id is not None:
+                try:
+                    _session_store().append_turn(
+                        session_id,
+                        user_content=query,
+                        assistant_content=result.get("answer", ""),
+                        assistant_extra={"type": result.get("type"), "path": "structured"},
+                    )
+                except (InvalidSessionIdError, SessionNotFoundError, SessionStorageError):
+                    return (
+                        jsonify(
+                            {
+                                "error": {
+                                    "code": "session_storage_error",
+                                    "message": "The answer was generated but the session could not be saved.",
+                                }
+                            }
+                        ),
+                        500,
+                    )
+                result["session_id"] = session_id
             response = jsonify({"data": result})
             response.headers["Cache-Control"] = "no-store"
             return response
@@ -572,12 +759,34 @@ def answer_query(run_id: str):
                 min_rerank_score=settings.generation_min_rerank_score,
             ),
             dry_run=dry_run,
+            history=session["messages"] if session is not None else None,
         )
         result["path"] = "semantic"
         result["router"] = {
             "reason": decision.reason,
             "vector_db_used": True,
         }
+        if session_id is not None and not dry_run:
+            try:
+                _session_store().append_turn(
+                    session_id,
+                    user_content=query,
+                    assistant_content=result.get("answer", ""),
+                    assistant_extra={"type": result.get("type"), "path": "semantic", "sources": result.get("sources", [])},
+                )
+            except (InvalidSessionIdError, SessionNotFoundError, SessionStorageError):
+                return (
+                    jsonify(
+                        {
+                            "error": {
+                                "code": "session_storage_error",
+                                "message": "The answer was generated but the session could not be saved.",
+                            }
+                        }
+                    ),
+                    500,
+                )
+            result["session_id"] = session_id
     except GenerationProviderError as exc:
         return (
             jsonify({"error": {"code": exc.code, "message": str(exc)}}),
