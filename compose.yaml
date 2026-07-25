@@ -1,0 +1,89 @@
+name: uc-degree-scraper
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: runner
+    environment:
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      target: runtime
+    env_file: .env
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./backend/data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/v1/health', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: ./backend
+      target: runtime
+    command: ["rq", "worker", "--url", "redis://redis:6379/0", "scraping"]
+    env_file: .env
+    volumes:
+      - ./backend/data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend-tests:
+    profiles: ["test"]
+    build:
+      context: ./backend
+      target: test
+    command: ["pytest", "-q"]
+    environment:
+      REDIS_URL: redis://redis:6379/15
+      DATA_DIR: /tmp/test-data
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis-data:

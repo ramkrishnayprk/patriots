@@ -1,0 +1,11 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=app --cov-report=term-missing -p no:cacheprovider"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+cache-dir = "/tmp/ruff-cache"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
