@@ -1,22 +1,37 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 import Sidebar from "./components/Sidebar";
 import MessageBubble from "./components/MessageBubble";
 import TypingIndicator from "./components/TypingIndicator";
 import ChatInput from "./components/ChatInput";
 import { readSSE } from "@/lib/sse";
 import { loadChatState, saveChatState } from "@/lib/storage";
-import { CURRENT_USER } from "@/lib/dummy/user";
+import {
+  getCurrentUser,
+  logout,
+  subscribeToAuthChanges,
+  isWelcomePending,
+  clearWelcomePending,
+  type CurrentUser,
+} from "@/lib/auth";
 import type { ChatMessage, ChatSource, Conversation } from "@/lib/dummy/conversations";
 import type { ChatModel } from "@/lib/dummy/models";
 
 export default function ChatClient() {
+  const router = useRouter();
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [models, setModels] = useState<ChatModel[]>([]);
@@ -31,14 +46,36 @@ export default function ChatClient() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const current = getCurrentUser();
+    if (!current) {
+      router.replace("/");
+      return;
+    }
+    setUser(current);
+    setAuthChecked(true);
+    if (isWelcomePending()) setShowWelcome(true);
+  }, [router]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    return subscribeToAuthChanges(() => {
+      if (!getCurrentUser()) router.replace("/");
+    });
+  }, [authChecked, router]);
+
+  useEffect(() => {
+    if (!authChecked || !user) return;
+
     async function bootstrap() {
       const modelsRes = await fetch("/api/models");
       const modelsData = await modelsRes.json();
       setModels(modelsData.models);
 
-      // Prefer this browser's saved history (localStorage) so reloads don't
-      // lose anything; fall back to the dummy server store on first visit.
-      const saved = loadChatState();
+      // Prefer this browser's saved history (localStorage), scoped to the
+      // logged-in user, so reloads don't lose anything and different local
+      // accounts never see each other's conversations; fall back to the
+      // dummy server store on first visit.
+      const saved = loadChatState(user!.id);
       if (saved && saved.conversations.length > 0) {
         const validModelId = modelsData.models.some((m: ChatModel) => m.id === saved.selectedModelId)
           ? saved.selectedModelId
@@ -59,18 +96,28 @@ export default function ChatClient() {
       setLoaded(true);
     }
     bootstrap();
-  }, []);
+  }, [authChecked, user]);
 
   useEffect(() => {
-    if (!loaded) return;
-    saveChatState({ conversations, activeId, selectedModelId });
-  }, [conversations, activeId, selectedModelId, loaded]);
+    if (!loaded || !user) return;
+    saveChatState(user.id, { conversations, activeId, selectedModelId });
+  }, [conversations, activeId, selectedModelId, loaded, user]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [conversations, activeId, streamingText]);
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
+
+  function dismissWelcome() {
+    setShowWelcome(false);
+    clearWelcomePending();
+  }
+
+  function handleLogout() {
+    logout();
+    router.replace("/");
+  }
 
   async function handleNewChat() {
     const res = await fetch("/api/conversations", {
@@ -176,7 +223,7 @@ export default function ChatClient() {
     }
   }
 
-  if (!loaded) {
+  if (!authChecked || !loaded || !user) {
     return (
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
         <CircularProgress color="primary" />
@@ -196,7 +243,8 @@ export default function ChatClient() {
         models={models}
         selectedModelId={selectedModelId}
         onSelectModel={setSelectedModelId}
-        user={CURRENT_USER}
+        user={user}
+        onLogout={handleLogout}
       />
 
       <Stack sx={{ flex: 1, height: "100vh", bgcolor: "background.default" }}>
@@ -247,6 +295,20 @@ export default function ChatClient() {
 
         <ChatInput disabled={isWaiting || isStreaming} onSend={handleSend} />
       </Stack>
+
+      <Snackbar
+        open={showWelcome}
+        autoHideDuration={5000}
+        onClose={(_event, reason) => {
+          if (reason === "clickaway") return;
+          dismissWelcome();
+        }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={dismissWelcome} severity="success" variant="filled" sx={{ bgcolor: "primary.main", color: "primary.contrastText" }}>
+          Welcome, {user.name}!
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

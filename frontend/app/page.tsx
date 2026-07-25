@@ -1,15 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
-import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
-import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import TheatersRoundedIcon from "@mui/icons-material/TheatersRounded";
+import HeroSplitPanel from "./components/HeroSplitPanel";
 
 export default function Home() {
   return (
@@ -22,10 +19,21 @@ export default function Home() {
         color: "#fff",
       }}
     >
-      <Container maxWidth="md" sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", py: 10 }}>
-        <Stack spacing={4} sx={{ alignItems: "center", textAlign: "center" }}>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+      <Container maxWidth="md" sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", py: { xs: 6, sm: 8 } }}>
+        <Stack spacing={{ xs: 3, sm: 3.5 }} sx={{ alignItems: "center", textAlign: "center" }}>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            className="hero-fade-up"
+            sx={{ alignItems: "center", animation: "hero-fade-up 500ms cubic-bezier(0.4,0,0.2,1) both" }}
+          >
             <TheatersRoundedIcon sx={{ fontSize: 36, color: "primary.main" }} />
+            <Typography
+              variant="h5"
+              sx={{ fontWeight: 800, letterSpacing: "-0.02em", color: "text.primary" }}
+            >
+              Cinebot
+            </Typography>
             <Chip
               label="TMDB + IMDb powered"
               sx={{
@@ -37,46 +45,35 @@ export default function Home() {
             />
           </Stack>
 
-          <Typography variant="h2" sx={{ fontWeight: 700, fontSize: { xs: "2.25rem", sm: "3rem" } }}>
+          <Typography
+            variant="h2"
+            className="hero-fade-up"
+            sx={{ fontWeight: 700, fontSize: { xs: "2.25rem", sm: "3rem" }, animation: "hero-fade-up 500ms cubic-bezier(0.4,0,0.2,1) 80ms both" }}
+          >
             Ask anything about movies &amp; TV
           </Typography>
 
-          <Typography variant="h6" sx={{ color: "rgba(255,255,255,0.75)", fontWeight: 400, maxWidth: 560 }}>
+          <Typography
+            variant="h6"
+            className="hero-fade-up"
+            sx={{
+              color: "rgba(255,255,255,0.75)",
+              fontWeight: 400,
+              maxWidth: 560,
+              animation: "hero-fade-up 500ms cubic-bezier(0.4,0,0.2,1) 160ms both",
+            }}
+          >
             A RAG-powered assistant grounded in TMDB and IMDb data — cast,
             crew, ratings, box office, and release dates, answered with
             cited sources.
           </Typography>
 
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ pt: 2 }}>
-            <Button
-              component={Link}
-              href="/chat"
-              variant="contained"
-              size="large"
-              color="primary"
-              startIcon={<ForumRoundedIcon />}
-              sx={{ px: 4, py: 1.5, fontSize: "1rem" }}
-            >
-              Start chatting
-            </Button>
-            <Button
-              component={Link}
-              href="/admin"
-              variant="outlined"
-              size="large"
-              startIcon={<AdminPanelSettingsRoundedIcon />}
-              sx={{
-                px: 4,
-                py: 1.5,
-                fontSize: "1rem",
-                color: "#fff",
-                borderColor: "rgba(255,255,255,0.4)",
-                "&:hover": { borderColor: "#fff", bgcolor: "rgba(255,255,255,0.06)" },
-              }}
-            >
-              Go to Admin
-            </Button>
-          </Stack>
+          <Box
+            className="hero-fade-up"
+            sx={{ width: "100%", pt: 1.5, animation: "hero-fade-up 500ms cubic-bezier(0.4,0,0.2,1) 240ms both" }}
+          >
+            <HeroSplitPanel />
+          </Box>
         </Stack>
       </Container>
 
@@ -88,6 +85,16 @@ export default function Home() {
           Developed by <Box component="span" sx={{ color: "primary.light", fontWeight: 600 }}>Patriots</Box>
         </Typography>
       </Box>
+
+      <style>{`
+        @keyframes hero-fade-up {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-fade-up { animation: none !important; opacity: 1 !important; transform: none !important; }
+        }
+      `}</style>
     </Box>
   );
 }
