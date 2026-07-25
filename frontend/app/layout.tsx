@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import ThemeRegistry from "./ThemeRegistry";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "UC Degree Scraper",
-  description: "University degree scraping workspace",
+  title: "Cinebot — Movie & TV Chat",
+  description: "Ask anything about movies and TV shows, grounded in TMDB and IMDb data",
 };
 
 export default function RootLayout({
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <ThemeRegistry>{children}</ThemeRegistry>
+      </body>
     </html>
   );
 }
