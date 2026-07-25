@@ -338,7 +338,10 @@ def run_structured_query(
 
     items = [_public_record(record) for record in matched]
     visible = items[:max_list_items]
-    titles = "\n".join(f"- {item['title']}" for item in visible)
+    titles = "\n".join(
+        f"- {item['title']} [{number}]"
+        for number, item in enumerate(visible, start=1)
+    )
     suffix = (
         f"\n\nShowing the first {max_list_items} of {len(items)}."
         if len(items) > max_list_items
@@ -405,9 +408,12 @@ def _ranked_response(
     limit = min(requested_limit, max_list_items)
     items = [_public_record(record) for record, _value in sortable[:limit]]
     label = _ranking_label(decision.sort_by)
+    # The [n] marker ties each row to _sources(items)[n-1] — both enumerate the
+    # same list from 1, so the ordinals always line up. The frontend renders
+    # these as inline citation badges.
     ranked_titles = "\n".join(
         f"{number}. {item['title']} — "
-        f"{_format_rank_value(item, decision.sort_by)}"
+        f"{_format_rank_value(item, decision.sort_by)} [{number}]"
         for number, item in enumerate(items, start=1)
     )
     vote_note = ""

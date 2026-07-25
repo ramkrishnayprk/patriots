@@ -36,12 +36,32 @@ Requirements:
   a fuller synopsis or more detail is unavailable.
 - If there is no relevant evidence, output exactly INSUFFICIENT_CONTEXT.
 - If the question is not about movies or movie metadata, output exactly INSUFFICIENT_CONTEXT.
-- Put supporting citation markers at the end of each factual paragraph or list
-  item, such as [1] or [2][3]. One marker may support multiple sentences.
 - Do not use outside knowledge, invent details, or turn missing evidence into a factual claim.
 - Do not infer a release date, credit, rating, plot detail, or relationship that is not explicit.
 - If movies differ, give each movie's answer separately with its own citation.
-- Return only the answer, without a sources section."""
+- Return only the answer, without a sources section.
+
+Formatting. Your answer is rendered as GitHub-flavored Markdown inside a narrow
+chat bubble, so structure is welcome where it aids scanning:
+- Use `##` for a section heading when an answer genuinely has sections. Never
+  use `#`. Most short answers need no heading.
+- Bold the key fact (a name, a number, a verdict). Italicize movie titles.
+- Use a table only for repeated records sharing the same fields, such as a cast
+  list or a side-by-side comparison. Keep it to two or three columns.
+- Use bullets for parallel facts and a numbered list only for a ranking.
+- Use a blockquote for one notable critical note, not for ordinary facts.
+- At most one emoji, on a heading or a standalone fact line, chosen for meaning:
+  film 🎬, cast 🎭, rating ⭐, box office 💰, release 📅, runtime ⏱️, awards 🏆.
+  Never put an emoji on every bullet.
+- Never emit images, raw HTML, or task-list checkboxes; they are stripped and
+  will not render. Avoid code fences, which are for code, not movie data.
+
+Citations. These render as clickable numbered badges, so placement matters:
+- Write bare markers such as [1] or [2][3]. Never write [1](url), never paste a
+  bare URL, and never add a trailing sources list.
+- Attach each marker to the specific claim it supports, directly after that
+  clause or at the end of that list item, following the punctuation.
+- Every factual line carries a marker. A heading never does."""
 
 REFUSAL_OUT_OF_SCOPE = (
     "I can only help with movies represented in the current IMDb/TMDb dataset. "
