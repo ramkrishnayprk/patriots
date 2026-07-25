@@ -2,7 +2,7 @@
 // no backend; passwords are hashed (SHA-256, no salt — there's no server
 // secret to salt against) only to avoid literal plaintext sitting in
 // localStorage, not to actually protect anything from someone with DevTools
-// access. Follows the same key/guard/try-catch convention as lib/storage.ts.
+// access. Follows the same localStorage guard/try-catch convention used elsewhere.
 // Deliberately exposes only semantic operations (createUser/login), not raw
 // load/save, so callers can't bypass uniqueness checks or hashing.
 

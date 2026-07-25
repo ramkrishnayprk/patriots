@@ -1,17 +1,37 @@
+"use client";
+
+import { useState } from "react";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
+import IconButton from "@mui/material/IconButton";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import MarkdownMessage from "./MarkdownMessage";
+import SourcesFooter from "./SourcesFooter";
 import type { ChatMessage } from "@/lib/chat/types";
 
-export default function MessageBubble({ message }: { message: ChatMessage }) {
+interface MessageBubbleProps {
+  message: ChatMessage;
+  isStreaming?: boolean;
+}
+
+export default function MessageBubble({ message, isStreaming }: MessageBubbleProps) {
   const isUser = message.role === "user";
-  const visibleContent = isUser
-    ? message.content
-    : message.content.replace(/\s*(?:\[\d+\])+/g, "").trim();
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard unavailable (non-HTTPS/localhost, permissions) — no-op.
+    }
+  }
 
   return (
     <Stack direction="row" spacing={1.5} sx={{ justifyContent: isUser ? "flex-end" : "flex-start", width: "100%" }}>
@@ -20,10 +40,16 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
           <SmartToyOutlinedIcon fontSize="small" />
         </Avatar>
       )}
-      <Box sx={{ maxWidth: "72%" }}>
+      <Box
+        sx={{
+          maxWidth: isUser ? "72%" : "min(88%, 720px)",
+          "&:hover .msg-copy-btn": { opacity: 1 },
+        }}
+      >
         <Paper
           elevation={0}
           sx={{
+            position: "relative",
             px: 2,
             py: 1.25,
             borderRadius: 3,
@@ -33,33 +59,36 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
             borderColor: "divider",
           }}
         >
-          <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-            {visibleContent}
-          </Typography>
-        </Paper>
-        {!isUser && message.sources && message.sources.length > 0 && (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="caption" color="text.secondary">
-              Sources
+          {isUser ? (
+            <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+              {message.content}
             </Typography>
-            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 0.5, gap: 1 }}>
-              {message.sources.map((s) => (
-                <Chip
-                  key={s.id}
-                  component="a"
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  clickable
-                  label={s.title}
-                  size="small"
-                  variant="outlined"
-                  sx={{ borderColor: "primary.main", color: "primary.light" }}
-                />
-              ))}
-            </Stack>
-          </Box>
-        )}
+          ) : (
+            <MarkdownMessage content={message.content} sources={message.sources} isStreaming={isStreaming} />
+          )}
+
+          {!isUser && !isStreaming && (
+            <IconButton
+              className="msg-copy-btn"
+              size="small"
+              onClick={handleCopy}
+              aria-label="Copy message"
+              sx={{
+                position: "absolute",
+                top: 4,
+                right: 4,
+                opacity: 0,
+                transition: "opacity 150ms",
+                color: "text.secondary",
+                "@media (hover: none)": { opacity: 1 },
+              }}
+            >
+              {copied ? <CheckRoundedIcon fontSize="inherit" /> : <ContentCopyRoundedIcon fontSize="inherit" />}
+            </IconButton>
+          )}
+        </Paper>
+
+        {!isUser && <SourcesFooter sources={message.sources} messageId={message.id} />}
       </Box>
     </Stack>
   );
