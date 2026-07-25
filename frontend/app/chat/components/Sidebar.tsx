@@ -28,7 +28,7 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import TheatersRoundedIcon from "@mui/icons-material/TheatersRounded";
 import type { Conversation } from "@/lib/dummy/conversations";
 import type { ChatModel } from "@/lib/dummy/models";
-import type { CurrentUser } from "@/lib/dummy/user";
+import type { CurrentUser } from "@/lib/auth";
 
 const SIDEBAR_WIDTH = 300;
 
@@ -54,6 +54,7 @@ interface Props {
   selectedModelId: string;
   onSelectModel: (id: string) => void;
   user: CurrentUser;
+  onLogout: () => void;
 }
 
 export default function Sidebar({
@@ -67,6 +68,7 @@ export default function Sidebar({
   selectedModelId,
   onSelectModel,
   user,
+  onLogout,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -311,7 +313,12 @@ export default function Sidebar({
           </ListItemIcon>
           Settings
         </MenuItem>
-        <MenuItem onClick={() => setProfileMenuAnchor(null)}>
+        <MenuItem
+          onClick={() => {
+            setProfileMenuAnchor(null);
+            onLogout();
+          }}
+        >
           <ListItemIcon>
             <LogoutRoundedIcon fontSize="small" />
           </ListItemIcon>
