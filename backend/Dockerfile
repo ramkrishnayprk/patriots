@@ -17,7 +17,7 @@ RUN pip install --upgrade pip \
 
 COPY --chown=app:app app ./app
 COPY --chown=app:app wsgi.py ./
-RUN mkdir -p /app/data && chown -R app:app /app/data
+RUN mkdir -p /app/data /models && chown -R app:app /app/data /models
 
 FROM base AS runtime
 USER app
