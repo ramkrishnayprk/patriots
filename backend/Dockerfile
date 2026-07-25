@@ -16,6 +16,7 @@ RUN pip install --upgrade pip \
     && pip install --requirement requirements.txt
 
 COPY --chown=app:app app ./app
+COPY --chown=app:app config ./config
 COPY --chown=app:app wsgi.py ./
 RUN mkdir -p /app/data /models && chown -R app:app /app/data /models
 

@@ -2,19 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Snackbar from "@mui/material/Snackbar";
-import Alert from "@mui/material/Alert";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import Sidebar from "./components/Sidebar";
 import MessageBubble from "./components/MessageBubble";
 import TypingIndicator from "./components/TypingIndicator";
 import ChatInput from "./components/ChatInput";
-import { readSSE } from "@/lib/sse";
-import { loadChatState, saveChatState } from "@/lib/storage";
 import {
   getCurrentUser,
   logout,
@@ -23,8 +21,11 @@ import {
   clearWelcomePending,
   type CurrentUser,
 } from "@/lib/auth";
-import type { ChatMessage, ChatSource, Conversation } from "@/lib/dummy/conversations";
-import type { ChatModel } from "@/lib/dummy/models";
+import type {
+  ChatMessage,
+  Conversation,
+} from "@/lib/chat/types";
+import type { ChatModel } from "@/lib/chat/models";
 
 export default function ChatClient() {
   const router = useRouter();
@@ -34,14 +35,12 @@ export default function ChatClient() {
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [draftMessages, setDraftMessages] = useState<ChatMessage[]>([]);
   const [models, setModels] = useState<ChatModel[]>([]);
-  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [selectedModelId, setSelectedModelId] = useState("");
   const [loaded, setLoaded] = useState(false);
-
-  const [streamingText, setStreamingText] = useState("");
-  const [streamingSources, setStreamingSources] = useState<ChatSource[] | null>(null);
   const [isWaiting, setIsWaiting] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -67,47 +66,50 @@ export default function ChatClient() {
     if (!authChecked || !user) return;
 
     async function bootstrap() {
-      const modelsRes = await fetch("/api/models");
-      const modelsData = await modelsRes.json();
-      setModels(modelsData.models);
-
-      // Prefer this browser's saved history (localStorage), scoped to the
-      // logged-in user, so reloads don't lose anything and different local
-      // accounts never see each other's conversations; fall back to the
-      // dummy server store on first visit.
-      const saved = loadChatState(user!.id);
-      if (saved && saved.conversations.length > 0) {
-        const validModelId = modelsData.models.some((m: ChatModel) => m.id === saved.selectedModelId)
-          ? saved.selectedModelId
-          : (modelsData.models[0]?.id ?? "");
-        const validActiveId = saved.conversations.some((c) => c.id === saved.activeId)
-          ? saved.activeId
-          : (saved.conversations[0]?.id ?? null);
-        setConversations(saved.conversations);
-        setActiveId(validActiveId);
-        setSelectedModelId(validModelId);
-      } else {
-        const convRes = await fetch("/api/conversations");
-        const convData = await convRes.json();
-        setConversations(convData.conversations);
-        setActiveId(convData.conversations[0]?.id ?? null);
-        setSelectedModelId(modelsData.models[0]?.id ?? "");
+      try {
+        const [modelsResponse, conversationsResponse] = await Promise.all([
+          fetch("/api/models", { cache: "no-store" }),
+          fetch("/api/conversations", { cache: "no-store" }),
+        ]);
+        if (!modelsResponse.ok || !conversationsResponse.ok) {
+          throw new Error("The chat service could not be loaded.");
+        }
+        const modelsData = await modelsResponse.json();
+        const conversationsData = await conversationsResponse.json();
+        const availableModels = Array.isArray(modelsData.models)
+          ? modelsData.models
+          : [];
+        const availableConversations = Array.isArray(
+          conversationsData.conversations,
+        )
+          ? conversationsData.conversations
+          : [];
+        setModels(availableModels);
+        setSelectedModelId(availableModels[0]?.id ?? "");
+        setConversations(availableConversations);
+        setActiveId(availableConversations[0]?.id ?? null);
+      } catch (loadError) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "The chat service could not be loaded.",
+        );
+      } finally {
+        setLoaded(true);
       }
-      setLoaded(true);
     }
-    bootstrap();
+    void bootstrap();
   }, [authChecked, user]);
 
   useEffect(() => {
-    if (!loaded || !user) return;
-    saveChatState(user.id, { conversations, activeId, selectedModelId });
-  }, [conversations, activeId, selectedModelId, loaded, user]);
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [conversations, activeId, draftMessages, isWaiting]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [conversations, activeId, streamingText]);
-
-  const active = conversations.find((c) => c.id === activeId) ?? null;
+  const active = conversations.find((conversation) => conversation.id === activeId) ?? null;
+  const visibleMessages = active?.messages ?? draftMessages;
 
   function dismissWelcome() {
     setShowWelcome(false);
@@ -119,20 +121,32 @@ export default function ChatClient() {
     router.replace("/");
   }
 
-  async function handleNewChat() {
-    const res = await fetch("/api/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ modelId: selectedModelId }),
-    });
-    const { conversation } = await res.json();
-    setConversations((prev) => [conversation, ...prev]);
-    setActiveId(conversation.id);
+  function handleNewChat() {
+    if (isWaiting) return;
+    setActiveId(null);
+    setDraftMessages([]);
+    setError(null);
+  }
+
+  function handleSelect(id: string) {
+    if (isWaiting) return;
+    setActiveId(id);
+    setDraftMessages([]);
+    setError(null);
   }
 
   async function handleDelete(id: string) {
-    await fetch(`/api/conversations/${id}`, { method: "DELETE" });
-    const remaining = conversations.filter((c) => c.id !== id);
+    if (isWaiting) return;
+    setError(null);
+    const response = await fetch(`/api/conversations/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      setError(payload.error || "The conversation could not be deleted.");
+      return;
+    }
+    const remaining = conversations.filter((conversation) => conversation.id !== id);
     setConversations(remaining);
     if (activeId === id) {
       setActiveId(remaining[0]?.id ?? null);
@@ -140,92 +154,95 @@ export default function ChatClient() {
   }
 
   async function handleRename(id: string, title: string) {
-    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)));
-    await fetch(`/api/conversations/${id}`, {
+    setError(null);
+    const response = await fetch(`/api/conversations/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
     });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(payload.error || "The conversation could not be renamed.");
+      return;
+    }
+    const updated = payload.conversation as Conversation;
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === updated.id ? updated : conversation,
+      ),
+    );
   }
 
   async function handleSend(text: string) {
-    let conversationId = activeId;
+    if (isWaiting) return;
 
-    if (!conversationId) {
-      const res = await fetch("/api/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modelId: selectedModelId }),
-      });
-      const { conversation } = await res.json();
-      conversationId = conversation.id;
-      setConversations((prev) => [conversation, ...prev]);
-      setActiveId(conversation.id);
-    }
-
-    const userMessage: ChatMessage = {
-      id: `local-${Date.now()}`,
+    const conversationId = activeId;
+    const optimisticMessage: ChatMessage = {
+      id: `pending-${Date.now()}`,
       role: "user",
       content: text,
       createdAt: new Date().toISOString(),
     };
-    setConversations((prev) =>
-      prev.map((c) => (c.id === conversationId ? { ...c, messages: [...c.messages, userMessage] } : c)),
-    );
-
-    setIsWaiting(true);
-    setStreamingText("");
-    setStreamingSources(null);
-
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, message: text }),
-    });
-
-    if (!res.ok || !res.body) {
-      setIsWaiting(false);
-      return;
+    if (conversationId) {
+      setConversations((current) =>
+        current.map((conversation) =>
+          conversation.id === conversationId
+            ? {
+                ...conversation,
+                messages: [...conversation.messages, optimisticMessage],
+              }
+            : conversation,
+        ),
+      );
+    } else {
+      setDraftMessages([optimisticMessage]);
     }
 
-    let acc = "";
-    let sources: ChatSource[] | undefined;
-
-    for await (const event of readSSE(res)) {
-      if (event.type === "delta") {
-        setIsWaiting(false);
-        setIsStreaming(true);
-        acc += event.text as string;
-        setStreamingText(acc);
-      } else if (event.type === "sources") {
-        sources = event.sources as ChatSource[];
-        setStreamingSources(sources);
-      } else if (event.type === "done") {
-        const assistantMessage: ChatMessage = {
-          id: `local-${Date.now()}-a`,
-          role: "assistant",
-          content: acc,
-          createdAt: new Date().toISOString(),
-          sources,
-        };
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === conversationId
-              ? { ...c, messages: [...c.messages, assistantMessage], updatedAt: assistantMessage.createdAt }
-              : c,
-          ),
-        );
-        setIsStreaming(false);
-        setIsWaiting(false);
-        setStreamingText("");
-        setStreamingSources(null);
+    setError(null);
+    setIsWaiting(true);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          message: text,
+          modelId: selectedModelId,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.conversation) {
+        throw new Error(payload.error || "The assistant could not answer.");
       }
+
+      const persisted = payload.conversation as Conversation;
+      setConversations((current) => [
+        persisted,
+        ...current.filter((conversation) => conversation.id !== persisted.id),
+      ]);
+      setActiveId(persisted.id);
+      setDraftMessages([]);
+    } catch (sendError) {
+      setError(
+        sendError instanceof Error
+          ? sendError.message
+          : "The assistant could not answer.",
+      );
+    } finally {
+      setIsWaiting(false);
     }
   }
 
   if (!authChecked || !loaded || !user) {
     return (
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh" }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+        }}
+      >
         <CircularProgress color="primary" />
       </Box>
     );
@@ -236,7 +253,7 @@ export default function ChatClient() {
       <Sidebar
         conversations={conversations}
         activeId={activeId}
-        onSelect={setActiveId}
+        onSelect={handleSelect}
         onNewChat={handleNewChat}
         onDelete={handleDelete}
         onRename={handleRename}
@@ -245,55 +262,62 @@ export default function ChatClient() {
         onSelectModel={setSelectedModelId}
         user={user}
         onLogout={handleLogout}
+        disabled={isWaiting}
       />
 
       <Stack sx={{ flex: 1, height: "100vh", bgcolor: "background.default" }}>
         <Stack
           direction="row"
-          sx={{ alignItems: "center", justifyContent: "space-between", px: 3, py: 2, borderBottom: "1px solid", borderColor: "divider" }}
+          sx={{
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 3,
+            py: 2,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+          }}
         >
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }} noWrap>
             {active?.title ?? "New chat"}
           </Typography>
           <Chip
             size="small"
-            label={models.find((m) => m.id === selectedModelId)?.label ?? ""}
-            sx={{ bgcolor: "rgba(242,177,52,0.12)", color: "primary.main", fontWeight: 600 }}
+            label={models.find((model) => model.id === selectedModelId)?.label ?? ""}
+            sx={{
+              bgcolor: "rgba(242,177,52,0.12)",
+              color: "primary.main",
+              fontWeight: 600,
+            }}
           />
         </Stack>
 
         <Box ref={scrollRef} sx={{ flex: 1, overflowY: "auto", px: 3, py: 3 }}>
           <Stack spacing={2.5} sx={{ maxWidth: 820, mx: "auto" }}>
-            {(!active || active.messages.length === 0) && !isWaiting && !isStreaming && (
+            {visibleMessages.length === 0 && !isWaiting && (
               <Box sx={{ textAlign: "center", color: "text.secondary", mt: 8 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                  Ask about movies &amp; TV shows
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                  Welcome to Cinebot
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 1 }}>
+                  Ask about 2026 movies, ratings, genres, cast, directors, or plots.
                 </Typography>
                 <Typography variant="body2">
-                  Try: &ldquo;Who directed Oppenheimer and what&apos;s the runtime?&rdquo;
+                  Try: &ldquo;What are the best science fiction movies?&rdquo;
                 </Typography>
               </Box>
             )}
 
-            {active?.messages.map((m) => <MessageBubble key={m.id} message={m} />)}
+            {visibleMessages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
 
             {isWaiting && <TypingIndicator />}
 
-            {isStreaming && (
-              <MessageBubble
-                message={{
-                  id: "streaming",
-                  role: "assistant",
-                  content: streamingText,
-                  createdAt: new Date().toISOString(),
-                  sources: streamingSources ?? undefined,
-                }}
-              />
-            )}
+            {error && <Alert severity="error">{error}</Alert>}
           </Stack>
         </Box>
 
-        <ChatInput disabled={isWaiting || isStreaming} onSend={handleSend} />
+        <ChatInput disabled={isWaiting} onSend={handleSend} />
       </Stack>
 
       <Snackbar

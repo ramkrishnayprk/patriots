@@ -146,6 +146,11 @@ def test_dry_run_builds_prompt_without_api_key_or_call():
 def test_guardrails_are_scoped_to_current_movie_data():
     combined = f"{SYSTEM_PROMPT}\n{REFUSAL_OUT_OF_SCOPE}".lower()
 
+    assert "friendly, concise movie assistant" in combined
+    assert "lead with the direct answer" in combined
+    assert "do not dump unrequested fields" in combined
+    assert "prose for one movie" in combined
+    assert "relevant evidence exists but is thin" in combined
     assert "imdb" in combined
     assert "tmdb" in combined
     assert "plots" in combined

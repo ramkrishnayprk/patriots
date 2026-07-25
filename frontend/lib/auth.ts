@@ -23,6 +23,7 @@ export interface StoredUser {
 interface StoredSession {
   userId: string;
   createdAt: string;
+  guest?: boolean;
 }
 
 export interface CurrentUser {
@@ -162,6 +163,23 @@ export async function login(identifier: string, password: string): Promise<AuthR
   return { ok: true, data: toCurrentUser(user) };
 }
 
+export function continueAsGuest(): CurrentUser {
+  const guest: CurrentUser = {
+    id: "guest",
+    name: "Guest",
+    email: "",
+    initials: "G",
+    username: "guest",
+  };
+  saveSession({
+    userId: guest.id,
+    createdAt: new Date().toISOString(),
+    guest: true,
+  });
+  markWelcomePending();
+  return guest;
+}
+
 export function logout(): void {
   clearSession();
 }
@@ -169,6 +187,15 @@ export function logout(): void {
 export function getCurrentUser(): CurrentUser | null {
   const session = loadSession();
   if (!session) return null;
+  if (session.guest) {
+    return {
+      id: "guest",
+      name: "Guest",
+      email: "",
+      initials: "G",
+      username: "guest",
+    };
+  }
   const user = loadUsers().find((u) => u.id === session.userId);
   return user ? toCurrentUser(user) : null;
 }

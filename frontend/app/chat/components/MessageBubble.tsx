@@ -5,10 +5,13 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
-import type { ChatMessage } from "@/lib/dummy/conversations";
+import type { ChatMessage } from "@/lib/chat/types";
 
 export default function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
+  const visibleContent = isUser
+    ? message.content
+    : message.content.replace(/\s*(?:\[\d+\])+/g, "").trim();
 
   return (
     <Stack direction="row" spacing={1.5} sx={{ justifyContent: isUser ? "flex-end" : "flex-start", width: "100%" }}>
@@ -31,26 +34,31 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
           }}
         >
           <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
-            {message.content}
+            {visibleContent}
           </Typography>
         </Paper>
         {!isUser && message.sources && message.sources.length > 0 && (
-          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 1, gap: 1 }}>
-            {message.sources.map((s) => (
-              <Chip
-                key={s.chunkId}
-                component="a"
-                href={s.url}
-                target="_blank"
-                rel="noreferrer"
-                clickable
-                label={s.title}
-                size="small"
-                variant="outlined"
-                sx={{ borderColor: "primary.main", color: "primary.light" }}
-              />
-            ))}
-          </Stack>
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="caption" color="text.secondary">
+              Sources
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 0.5, gap: 1 }}>
+              {message.sources.map((s) => (
+                <Chip
+                  key={s.id}
+                  component="a"
+                  href={s.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  clickable
+                  label={s.title}
+                  size="small"
+                  variant="outlined"
+                  sx={{ borderColor: "primary.main", color: "primary.light" }}
+                />
+              ))}
+            </Stack>
+          </Box>
         )}
       </Box>
     </Stack>

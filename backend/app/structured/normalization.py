@@ -10,6 +10,7 @@ def normalize_movie_record(record: dict[str, Any]) -> dict[str, Any]:
         "year": _integer(record.get("year")),
         "runtime": _integer(record.get("runtime")),
         "genres": _strings(record.get("genres")),
+        "akas": _strings(record.get("akas")),
         "imdb_rating": _number(record.get("imdb_rating")),
         "imdb_votes": _integer(record.get("imdb_votes")),
         "tmdb_vote_average": _number(record.get("tmdb_vote_average")),
