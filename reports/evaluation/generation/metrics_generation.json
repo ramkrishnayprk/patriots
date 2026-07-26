@@ -1,0 +1,93 @@
+{
+  "run_id": "combined-movies",
+  "items": 40,
+  "evaluation_status": "exploratory_unverified_end_to_end_generation",
+  "generation_model": "gpt-4.1-mini",
+  "judge_model": "gpt-4.1-mini",
+  "scope": {
+    "B3": "production semantic escalation plus grounded final generation",
+    "answer_correctness": "LLM-judged against gold answer and evidence",
+    "citation_validity": "LLM-judged support plus deterministic citation syntax",
+    "pricing": "USD cost not calculated; token usage is reported"
+  },
+  "all": {
+    "queries": 40,
+    "recall_at_5": 1.0,
+    "recall_at_20": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_10": 1.0,
+    "answer_correctness": 0.8620689655172413,
+    "citation_validity": 0.7931034482758621,
+    "correct_refusal_rate": 0.9090909090909091,
+    "over_refusal_rate": 0.13793103448275862,
+    "answer_latency_p50_ms": 2432.2705,
+    "answer_latency_p95_ms": 4093.718949999999,
+    "openai_calls": 65,
+    "input_tokens": 121309,
+    "output_tokens": 3828,
+    "total_tokens": 125137,
+    "cost_per_query_usd": null
+  },
+  "dev": {
+    "queries": 24,
+    "recall_at_5": 1.0,
+    "recall_at_20": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_10": 1.0,
+    "answer_correctness": 0.8235294117647058,
+    "citation_validity": 0.7647058823529411,
+    "correct_refusal_rate": 0.8571428571428571,
+    "over_refusal_rate": 0.17647058823529413,
+    "answer_latency_p50_ms": 2421.2084999999997,
+    "answer_latency_p95_ms": 4361.9479999999985,
+    "openai_calls": 38,
+    "input_tokens": 71810,
+    "output_tokens": 2190,
+    "total_tokens": 74000,
+    "cost_per_query_usd": null
+  },
+  "test": {
+    "queries": 16,
+    "recall_at_5": 1.0,
+    "recall_at_20": 1.0,
+    "mrr": 1.0,
+    "ndcg_at_10": 1.0,
+    "answer_correctness": 0.9166666666666666,
+    "citation_validity": 0.8333333333333334,
+    "correct_refusal_rate": 1.0,
+    "over_refusal_rate": 0.08333333333333333,
+    "answer_latency_p50_ms": 2465.9275,
+    "answer_latency_p95_ms": 3598.92225,
+    "openai_calls": 27,
+    "input_tokens": 49499,
+    "output_tokens": 1638,
+    "total_tokens": 51137,
+    "cost_per_query_usd": null
+  },
+  "uncertainty": {
+    "answer_correctness": {
+      "estimate": 0.8620689655172413,
+      "ci95_low": 0.7241379310344828,
+      "ci95_high": 0.9655172413793104,
+      "bootstrap_samples": 5000
+    },
+    "correct_refusal_rate": {
+      "estimate": 0.9090909090909091,
+      "ci95_low": 0.7272727272727273,
+      "ci95_high": 1.0,
+      "bootstrap_samples": 5000
+    }
+  },
+  "failures": {
+    "incorrect_answers": 4,
+    "invalid_citations": 6,
+    "over_refusals": 4,
+    "missed_refusals": 1
+  },
+  "limitations": [
+    "The golden set is AI-drafted and not human-verified.",
+    "The same configured model may generate and judge unless --judge-model differs.",
+    "B3 is forced through the semantic path to evaluate final LLM output.",
+    "USD cost is not inferred because model pricing is not configured."
+  ]
+}

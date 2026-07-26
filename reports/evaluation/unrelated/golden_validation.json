@@ -1,0 +1,15 @@
+{
+  "structurally_valid": true,
+  "assessment_ready": false,
+  "human_verification_required": true,
+  "items": 40,
+  "answerable": 0,
+  "out_of_domain": 40,
+  "human_verified": 0,
+  "split_counts": {
+    "dev": 24,
+    "test": 16
+  },
+  "movie_domain_terms_found": 0,
+  "errors": []
+}

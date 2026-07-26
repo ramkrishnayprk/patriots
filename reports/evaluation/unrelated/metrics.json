@@ -1,0 +1,212 @@
+{
+  "run_id": "combined-movies",
+  "items": 40,
+  "evaluation_status": "exploratory_unverified_out_of_domain",
+  "metric_scope": {
+    "retrieval_metrics": "not_applicable_no_relevant_documents",
+    "primary_metric": "correct_refusal_rate",
+    "generation_evaluated": false
+  },
+  "baselines": {
+    "B0_closed_book_refusal": {
+      "all": {
+        "queries": 40,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 1.0,
+        "failure_to_refuse_rate": 0.0,
+        "mean_returned_documents": 0.0,
+        "latency_p50_ms": 0.001,
+        "latency_p95_ms": 0.0021499999999999913,
+        "cost_per_query_usd": 0.0
+      },
+      "dev": {
+        "queries": 24,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 1.0,
+        "failure_to_refuse_rate": 0.0,
+        "mean_returned_documents": 0.0,
+        "latency_p50_ms": 0.001,
+        "latency_p95_ms": 0.004549999999999993,
+        "cost_per_query_usd": 0.0
+      },
+      "test": {
+        "queries": 16,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 1.0,
+        "failure_to_refuse_rate": 0.0,
+        "mean_returned_documents": 0.0,
+        "latency_p50_ms": 0.001,
+        "latency_p95_ms": 0.002,
+        "cost_per_query_usd": 0.0
+      }
+    },
+    "B1_bm25": {
+      "all": {
+        "queries": 40,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 0.0,
+        "failure_to_refuse_rate": 1.0,
+        "mean_returned_documents": 20.0,
+        "latency_p50_ms": 13.501000000000001,
+        "latency_p95_ms": 19.8402,
+        "cost_per_query_usd": 0.0
+      },
+      "dev": {
+        "queries": 24,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 0.0,
+        "failure_to_refuse_rate": 1.0,
+        "mean_returned_documents": 20.0,
+        "latency_p50_ms": 13.326,
+        "latency_p95_ms": 19.6242,
+        "cost_per_query_usd": 0.0
+      },
+      "test": {
+        "queries": 16,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 0.0,
+        "failure_to_refuse_rate": 1.0,
+        "mean_returned_documents": 20.0,
+        "latency_p50_ms": 13.501000000000001,
+        "latency_p95_ms": 16.380000000000003,
+        "cost_per_query_usd": 0.0
+      }
+    },
+    "B2_dense_naive": {
+      "all": {
+        "queries": 40,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 0.2,
+        "failure_to_refuse_rate": 0.8,
+        "mean_returned_documents": 19.95,
+        "latency_p50_ms": 14.568999999999999,
+        "latency_p95_ms": 23.271,
+        "cost_per_query_usd": 0.0
+      },
+      "dev": {
+        "queries": 24,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 0.16666666666666666,
+        "failure_to_refuse_rate": 0.8333333333333334,
+        "mean_returned_documents": 19.916666666666668,
+        "latency_p50_ms": 17.6115,
+        "latency_p95_ms": 23.6057,
+        "cost_per_query_usd": 0.0
+      },
+      "test": {
+        "queries": 16,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 0.25,
+        "failure_to_refuse_rate": 0.75,
+        "mean_returned_documents": 20.0,
+        "latency_p50_ms": 11.58,
+        "latency_p95_ms": 21.835,
+        "cost_per_query_usd": 0.0
+      }
+    },
+    "B3_final": {
+      "all": {
+        "queries": 40,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 0.975,
+        "failure_to_refuse_rate": 0.025000000000000022,
+        "mean_returned_documents": 19.925,
+        "latency_p50_ms": 735.2529999999999,
+        "latency_p95_ms": 1156.76075,
+        "cost_per_query_usd": 0.0
+      },
+      "dev": {
+        "queries": 24,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 1.0,
+        "failure_to_refuse_rate": 0.0,
+        "mean_returned_documents": 19.916666666666668,
+        "latency_p50_ms": 739.826,
+        "latency_p95_ms": 1191.9467999999995,
+        "cost_per_query_usd": 0.0
+      },
+      "test": {
+        "queries": 16,
+        "recall_at_5": null,
+        "recall_at_20": null,
+        "mrr": null,
+        "ndcg_at_10": null,
+        "answer_correctness": null,
+        "citation_validity": null,
+        "correct_refusal_rate": 0.9375,
+        "failure_to_refuse_rate": 0.0625,
+        "mean_returned_documents": 19.9375,
+        "latency_p50_ms": 724.506,
+        "latency_p95_ms": 965.23375,
+        "cost_per_query_usd": 0.0
+      }
+    }
+  },
+  "uncertainty": {
+    "B3_minus_B2_correct_refusal": {
+      "delta": 0.775,
+      "ci95_low": 0.65,
+      "ci95_high": 0.9,
+      "bootstrap_samples": 5000
+    }
+  },
+  "error_analysis": {
+    "labeled_failures": 15,
+    "total_failures_across_B1_B2_B3": 73
+  }
+}

@@ -1,0 +1,132 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{url}
+
+\title{Movie RAG: End-to-End Generation Evaluation}
+\author{Combined Movies Run}
+\date{July 26, 2026}
+
+\begin{document}
+\setlength{\emergencystretch}{3em}
+\maketitle
+
+\section{Evaluation scope}
+
+This report evaluates the final grounded answer output rather than treating
+retrieval coverage as an answer-correctness proxy. All 40 questions were
+forced through the B3 semantic path: production hybrid retrieval, weak-query
+escalation, evidence gating, and grounded OpenAI generation. Generated answers
+were graded against the golden answer and evidence using a strict structured
+judge. Citation validity additionally required syntactically valid context
+numbers.
+
+The generation and judge model was \path{gpt-4.1-mini}. The golden CSV is
+still AI-drafted with \path{human_verified=false}; therefore these are
+exploratory results, not official assessment scores.
+
+\section{Main results}
+
+\begin{center}
+\small
+\begin{tabular}{lrrrrrrrr}
+\hline
+Config & R@5 & R@20 & MRR & nDCG@10 & Ans. & Refuse & Over & p95 ms \\
+\hline
+B3 retrieval proxy & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 0.091 & 0.000 & 1532.1 \\
+B3 final + LLM & 1.000 & 1.000 & 1.000 & 1.000 & 0.862 & 0.909 & 0.138 & 4093.7 \\
+\hline
+\end{tabular}
+\normalsize
+\end{center}
+
+There were 29 answerable and 11 non-answerable items. The final system
+answered 25 of 29 answerable questions correctly, producing answer correctness
+of 0.862. It correctly refused 10 of 11 non-answerable questions, producing a
+correct-refusal rate of 0.909. It incorrectly refused 4 of 29 answerable
+questions, producing an over-refusal rate of 0.138.
+
+Citation validity was 0.793: 23 of 29 answerable items had a fully valid final
+citation result. The two non-refusal citation errors were correct answers with
+an additional citation to a context item that did not support the stated fact.
+The remaining four citation failures were the four over-refusals.
+
+\section{Development and test splits}
+
+\begin{center}
+\small
+\begin{tabular}{lrrrrrr}
+\hline
+Split & Items & Ans. & Citation & Refuse & Over & p95 ms \\
+\hline
+Development & 24 & 0.824 & 0.765 & 0.857 & 0.176 & 4361.9 \\
+Test & 16 & 0.917 & 0.833 & 1.000 & 0.083 & 3598.9 \\
+All & 40 & 0.862 & 0.793 & 0.909 & 0.138 & 4093.7 \\
+\hline
+\end{tabular}
+\normalsize
+\end{center}
+
+\section{Observed failures}
+
+\begin{longtable}{p{0.09\textwidth}p{0.20\textwidth}p{0.60\textwidth}}
+\hline
+ID & Label & Observation \\
+\hline
+G004 & Over-refusal & Confident retrieval found The Orchard Below, but generation refused the director question. \\
+G005 & Over-refusal & Confident retrieval found The Orchard Below, but generation refused the writer question. \\
+G007 & Over-refusal & Confident retrieval found Ember Transit, but generation refused the director question. \\
+G020 & Over-refusal & Retrieval found both required movies, but generation refused the combined-runtime calculation. \\
+G006 & Invalid citation & Runtime was correct, but context item 2 did not support the claim. \\
+G014 & Invalid citation & Genres were correct, but context item 2 did not support the claim. \\
+G038 & Missed refusal & ``Who directed it?'' had no conversation context, but the model selected an unrelated movie instead of requesting clarification. \\
+\hline
+\end{longtable}
+
+These results demonstrate that perfect retrieval does not imply perfect final
+answers. The principal final-stage problems are generator over-refusal,
+extraneous citations, and failure to reject an unresolved conversational
+reference.
+
+\section{Latency and API usage}
+
+Answer latency includes retrieval, escalation, and final generation, but
+excludes the evaluation judge call. Median answer latency was 2432.3 ms and
+p95 was 4093.7 ms.
+
+The complete run, including answer grading, made 65 OpenAI calls and used
+121,309 input tokens plus 3,828 output tokens, for 125,137 total tokens. USD
+cost is not reported because model-specific pricing was not configured in the
+evaluator.
+
+\section{Uncertainty and limitations}
+
+The answer-correctness estimate was 0.862 with a 95\% paired-bootstrap interval
+of $[0.724, 0.966]$. Correct refusal was 0.909 with interval
+$[0.727, 1.000]$, using 5,000 resamples.
+
+\begin{itemize}
+  \item The same model generated and graded answers, which can introduce
+        self-judging bias.
+  \item The golden set has not been human-verified.
+  \item Questions were forced through semantic generation. Normal production
+        auto-routing would answer several factual entity questions directly
+        from structured records without an LLM.
+  \item Retrieval metrics are document-ID metrics; citation and answer scores
+        evaluate the final generated output.
+  \item The test split was used exploratorily and is not the rubric's frozen,
+        once-only official test run.
+\end{itemize}
+
+\section{Artifacts}
+
+The full generated answers, retrieval IDs, judge rationales, citations,
+latencies, escalation decisions, and token counts are stored in
+\path{per_item_generation.csv}. Aggregate values are stored in
+\path{metrics_generation.csv} and \path{metrics_generation.json}.
+The seven observed failures are summarized in
+\path{failure_analysis_generation.csv}.
+
+\end{document}

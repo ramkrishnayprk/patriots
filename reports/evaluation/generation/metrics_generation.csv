@@ -1,0 +1,2 @@
+queries,recall_at_5,recall_at_20,mrr,ndcg_at_10,answer_correctness,citation_validity,correct_refusal_rate,over_refusal_rate,answer_latency_p50_ms,answer_latency_p95_ms,openai_calls,input_tokens,output_tokens,total_tokens,cost_per_query_usd
+40,1.0,1.0,1.0,1.0,0.8620689655172413,0.7931034482758621,0.9090909090909091,0.13793103448275862,2432.2705,4093.718949999999,65,121309,3828,125137,

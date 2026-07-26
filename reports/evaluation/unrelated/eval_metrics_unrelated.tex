@@ -1,0 +1,117 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.75in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{url}
+
+\title{Movie RAG: Out-of-Domain Refusal Evaluation}
+\author{Combined Movies Run}
+\date{July 26, 2026}
+
+\begin{document}
+\maketitle
+
+\section{Purpose and status}
+
+This is a separate exploratory stress test of the
+\texttt{combined-movies} system. It does not replace or modify the existing
+movie golden set or its report. The new CSV contains 40 questions that are
+completely unrelated to IMDb, TMDb, movies, casts, directors, genres, plots,
+or release data. Every item is therefore expected to be refused or redirected.
+
+The CSV passed structural validation: it contains 24 development and 16 test
+items, all 40 are marked non-answerable, and the validator found no
+movie-domain terms in the questions. All rows remain
+\texttt{human\_verified=false}, so the results are exploratory and must not be
+reported as an official assessment score.
+
+\section{What is measured}
+
+\begin{longtable}{p{0.29\textwidth}p{0.16\textwidth}p{0.46\textwidth}}
+\hline
+Metric & Range & Meaning in this evaluation \\
+\hline
+Correct-refusal rate & $[0,1]$ & Fraction of unrelated questions stopped by the retrieval evidence gate. Higher is better. \\
+Failure-to-refuse rate & $[0,1]$ & Fraction of unrelated questions incorrectly accepted as answerable. It equals one minus correct-refusal rate. Lower is better. \\
+Mean returned documents & $[0,\infty)$ & Average number of candidates retrieved before the evidence-gate decision. Retrieved candidates are not necessarily relevant. \\
+Latency p50 & $[0,\infty)$ ms & Median local retrieval and decision time. Half of queries are faster and half are slower. \\
+Latency p95 & $[0,\infty)$ ms & 95th-percentile local retrieval and decision time. Only about 5\% of queries are slower. \\
+Cost per query & $[0,\infty)$ USD & Paid API cost. It is zero because this experiment used local retrieval and reranking only. \\
+\hline
+\end{longtable}
+
+Recall@5, Recall@20, MRR, nDCG@10, answer correctness, and citation validity
+are not applicable here. Those metrics require at least one relevant or
+answerable document, while this set deliberately has none. Reporting zero for
+them would incorrectly suggest retrieval failure rather than an
+out-of-domain test.
+
+\section{Observed results}
+
+\begin{center}
+\small
+\begin{tabular}{lrrrrrrrr}
+\hline
+Config & R@5 & R@20 & MRR & nDCG@10 & Ans. & Refuse & Over & p95 ms \\
+\hline
+B0 control & N/A & N/A & N/A & N/A & N/A & 1.000 & N/A & 0.002 \\
+B1 BM25 & N/A & N/A & N/A & N/A & N/A & 0.000 & N/A & 19.840 \\
+B2 dense naive & N/A & N/A & N/A & N/A & N/A & 0.200 & N/A & 23.271 \\
+B3 final & N/A & N/A & N/A & N/A & N/A & 0.975 & N/A & 1156.761 \\
+\hline
+\end{tabular}
+\normalsize
+\end{center}
+
+Here, \textbf{Refuse} is the correct-refusal rate on the 40 unrelated
+questions. \textbf{Over} is not the failure-to-refuse rate: over-refusal is
+defined only on answerable questions, and this dataset contains zero
+answerable questions. The complementary failure-to-refuse rates for B0, B1,
+B2, and B3 are respectively 0.000, 1.000, 0.800, and 0.025.
+
+B0 is an always-refuse control, so its perfect score is expected and does not
+show useful movie-answering ability. B1 always returned lexical candidates
+and has no confidence gate capable of rejecting them. B2's fixed dense-score
+threshold rejected 8 of 40 questions. B3's hybrid retrieval, reranking, and
+evidence gate rejected 39 of 40 questions.
+
+The single B3 failure was \texttt{U040}: ``Tell me everything about it.''
+Because it contains no explicit subject, the current pipeline treated it like
+a possible conversational movie follow-up and accepted weak movie candidates.
+The appropriate fix is to require valid prior-session context for referential
+queries such as ``it'' or ``that,'' and otherwise ask for clarification before
+retrieval.
+
+\section{Uncertainty}
+
+The all-item improvement in correct-refusal rate from B2 to B3 is 0.775.
+A paired bootstrap with 5,000 resamples produced a 95\% confidence interval
+of $[0.650, 0.900]$. The interval excludes zero, so this dataset provides
+evidence that B3's gate rejects unrelated queries more reliably than the
+naive dense threshold. This conclusion is limited to the current 40-item,
+unverified set.
+
+\section{Important limitations}
+
+\begin{itemize}
+  \item This run evaluated retrieval and the pre-generation evidence decision;
+        it did not call an LLM or grade generated prose. It therefore measures
+        refusal gating, not end-to-end hallucination.
+  \item An all-unanswerable set cannot measure recall, ranking quality,
+        answer correctness, citation quality, or over-refusal on valid movie
+        questions. Those remain covered by the original mixed golden set.
+  \item The test split was processed for exploratory diagnostics. It is not an
+        official frozen-test result because human verification is incomplete.
+  \item Latencies are local measurements from one run and may change with
+        hardware, cache state, and concurrent load.
+\end{itemize}
+
+\section{Reproduction}
+
+The separate input, validation report, per-item decisions, error analysis,
+CSV/JSON metrics, and this report are stored under
+\texttt{reports/evaluation/unrelated}. The commands needed to validate,
+evaluate, and compile the PDF are documented in that directory's README.
+
+\end{document}
