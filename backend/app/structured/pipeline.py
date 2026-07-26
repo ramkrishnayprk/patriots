@@ -471,14 +471,14 @@ def _extract_filters(query: str) -> dict[str, Any]:
         filters["release_months"] = sorted(release_months)
 
     rating = re.search(
-        r"\b(?:imdb\s+)?rat(?:ed|ing)?\s*(>=|>|at least|above|over)\s*"
+        r"\b(?:imdb\s+)?(?:rated|ratings?)\s*(>=|>|at least|above|over)\s*"
         r"(\d(?:\.\d+)?)",
         query,
     )
     if rating:
         filters["min_imdb_rating"] = float(rating.group(2))
     maximum_rating = re.search(
-        r"\b(?:imdb\s+)?rat(?:ed|ing)?\s*(<=|<|at most|below|under)\s*"
+        r"\b(?:imdb\s+)?(?:rated|ratings?)\s*(<=|<|at most|below|under)\s*"
         r"(\d(?:\.\d+)?)",
         query,
     )
@@ -744,6 +744,12 @@ def _no_matches_answer(
     if person:
         years = {record.get("year") for record in records if record.get("year")}
         dataset = f"this {years.pop()} dataset" if len(years) == 1 else "this dataset"
+        additional_filters = set(filters) - {"person_name", "person_role"}
+        if additional_filters:
+            return (
+                f"No movies matched all requested filters for "
+                f"{_display_name(str(person))} in {dataset}."
+            )
         return (
             f"No movies featuring {_display_name(str(person))} were found in "
             f"{dataset}."

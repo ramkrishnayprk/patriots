@@ -69,6 +69,41 @@ def test_mode_can_force_either_path():
     assert route_query("List all movies", mode="semantic").path == "semantic"
 
 
+def test_combined_director_genre_and_plural_rating_filter():
+    decision = route_query(
+        "Which sci-fi movies directed by Christopher Nolan have IMDb ratings above 8?"
+    )
+
+    assert decision.path == "structured"
+    assert decision.operation == "list"
+    assert decision.filters == {
+        "genre": "Science Fiction",
+        "min_imdb_rating": 8.0,
+        "person_name": "christopher nolan",
+        "person_role": "directors",
+    }
+    assert decision.topic_terms == ()
+
+
+def test_combined_person_and_metadata_no_match_is_not_misleading(tmp_path):
+    query = (
+        "Which sci-fi movies directed by Christopher Nolan "
+        "have IMDb ratings above 8?"
+    )
+
+    result = run_structured_query(
+        query,
+        repository=_repository(tmp_path),
+        decision=route_query(query),
+    )
+
+    assert result["type"] == "not_in_sources"
+    assert result["answer"] == (
+        "No movies matched all requested filters for Christopher Nolan "
+        "in this 2026 dataset."
+    )
+
+
 def test_jsonl_repository_filters_and_counts_without_vector_access(tmp_path):
     repository = _repository(tmp_path)
     query = "How many 2026 science fiction movies rated above 7?"
